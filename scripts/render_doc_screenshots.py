@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-"""Generate documentation screenshots (240×240 e-ink style) for docs/images/."""
+"""Generate straight documentation screenshots (240×240, matches firmware layout).
+
+Uses your real on-device text/content — not tilted phone photos. Run after UI changes:
+
+  .venv/bin/python scripts/render_doc_screenshots.py
+"""
 
 from __future__ import annotations
 
-import math
 import sys
 from pathlib import Path
 
@@ -15,9 +19,8 @@ except ImportError:
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "docs" / "images"
-ASSETS = ROOT / "assets"
 
-# RGB565 palette → RGB (matches firmware)
+# RGB565 e-ink palette (matches firmware)
 COL_PAPER = (198, 195, 188)
 COL_INK = (227, 227, 227)
 COL_GRAY = (156, 152, 147)
@@ -25,22 +28,27 @@ COL_LINE = (74, 73, 69)
 SIZE = 240
 CX, CY = 120, 120
 
+# Layout constants from src/main.cpp
+CLOCK_WEEKDAY_Y = 76
+CLOCK_DATE_Y = 96
+CLOCK_TIME_Y = 142
+
 
 def load_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
-    names = (
+    candidates = (
         [
             "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
-            "/System/Library/Fonts/Helvetica.ttc",
             "/Library/Fonts/Arial Bold.ttf",
+            "/System/Library/Fonts/Helvetica.ttc",
         ]
         if bold
         else [
             "/System/Library/Fonts/Supplemental/Arial.ttf",
-            "/System/Library/Fonts/Helvetica.ttc",
             "/Library/Fonts/Arial.ttf",
+            "/System/Library/Fonts/Helvetica.ttc",
         ]
     )
-    for path in names:
+    for path in candidates:
         if Path(path).exists():
             try:
                 return ImageFont.truetype(path, size)
@@ -57,10 +65,16 @@ def new_screen() -> tuple[Image.Image, ImageDraw.ImageDraw]:
     return img, draw
 
 
-def text_center(draw: ImageDraw.ImageDraw, text: str, y: int, font, fill) -> None:
+def text_center(draw: ImageDraw.ImageDraw, text: str, y: int, font, fill) -> int:
     bbox = draw.textbbox((0, 0), text, font=font)
-    w = bbox[2] - bbox[0]
-    draw.text((CX - w // 2, y - (bbox[3] - bbox[1]) // 2), text, font=font, fill=fill)
+    w, h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    draw.text((CX - w // 2, y - h // 2), text, font=font, fill=fill)
+    return w
+
+
+def text_width(text: str, font) -> int:
+    bbox = ImageDraw.Draw(Image.new("RGB", (1, 1))).textbbox((0, 0), text, font=font)
+    return bbox[2] - bbox[0]
 
 
 def draw_dots(draw: ImageDraw.ImageDraw, active: int, count: int = 4) -> None:
@@ -70,106 +84,123 @@ def draw_dots(draw: ImageDraw.ImageDraw, active: int, count: int = 4) -> None:
         x = x0 + i * spacing
         r = 3 if i == active else 2
         fill = COL_INK if i == active else COL_GRAY
-        draw.ellipse((x - r, 218 - r, x + r, 218 + r), fill=fill)
+        outline = COL_GRAY if i != active else COL_INK
+        draw.ellipse((x - r, 218 - r, x + r, 218 + r), fill=fill, outline=outline)
+
+
+def draw_cloud(draw: ImageDraw.ImageDraw, cx: int, cy: int, scale: float = 1.0) -> None:
+    r = int(14 * scale)
+    draw.ellipse((cx - r, cy - 4, cx + r, cy + 10), fill=COL_GRAY)
+    draw.ellipse((cx - r - 10, cy, cx - 2, cy + 14), fill=COL_GRAY)
+    draw.ellipse((cx + 2, cy, cx + r + 10, cy + 14), fill=COL_GRAY)
+
+
+def draw_spotify_bars(draw: ImageDraw.ImageDraw, cx: int, cy: int) -> None:
+    heights = (10, 16, 12, 18, 14)
+    x0 = cx - 24
+    for i, h in enumerate(heights):
+        bx = x0 + i * 12
+        draw.rectangle((bx, cy - h, bx + 8, cy), fill=COL_INK)
+
+
+def draw_wifi_bars(draw: ImageDraw.ImageDraw, cx: int, cy: int, filled: int, total: int = 4) -> None:
+    spacing = 12
+    x0 = cx - (total - 1) * spacing // 2
+    for i in range(total):
+        h = 8 + i * 6
+        bx = x0 + i * spacing
+        by = cy - h
+        if i < filled:
+            draw.rectangle((bx, by, bx + 8, cy), fill=COL_INK)
+        else:
+            draw.rectangle((bx, by, bx + 8, cy), outline=COL_GRAY, width=1)
+
+
+def draw_clock_time(draw: ImageDraw.ImageDraw, time_s: str, sec_s: str) -> None:
+    f_time = load_font(46, bold=True)
+    f_sec = load_font(16)
+    w_time = text_width(time_s, f_time)
+    w_sec = text_width(sec_s, f_sec)
+    total = w_time + w_sec
+    x0 = CX - total // 2
+    y = CLOCK_TIME_Y
+    bbox_t = draw.textbbox((0, 0), time_s, font=f_time)
+    th = bbox_t[3] - bbox_t[1]
+    draw.text((x0, y - th // 2), time_s, font=f_time, fill=COL_INK)
+    bbox_s = draw.textbbox((0, 0), sec_s, font=f_sec)
+    sh = bbox_s[3] - bbox_s[1]
+    draw.text((x0 + w_time, y - sh // 2 + 4), sec_s, font=f_sec, fill=COL_GRAY)
 
 
 def render_clock() -> Image.Image:
     img, draw = new_screen()
-    f2 = load_font(14)
-    f4 = load_font(20, bold=True)
-    f7 = load_font(52, bold=True)
-    fsec = load_font(18, bold=True)
+    f2 = load_font(15)
+    f4 = load_font(22, bold=True)
 
-    text_center(draw, "Thursday", 76, f2, COL_INK)
-    text_center(draw, "May 21", 96, f4, COL_INK)
-
-    time = "2:45"
-    bbox = draw.textbbox((0, 0), time, font=f7)
-    tw = bbox[2] - bbox[0]
-    draw.text((CX - tw // 2 - 8, 108), time, font=f7, fill=COL_INK)
-    draw.text((CX + tw // 2 + 4, 118), "32", font=fsec, fill=COL_INK)
-    draw.ellipse((CX + tw // 2 - 2, 125, CX + tw // 2 + 6, 133), fill=COL_INK)
-
+    text_center(draw, "Monday", CLOCK_WEEKDAY_Y, f2, COL_GRAY)
+    text_center(draw, "25 May", CLOCK_DATE_Y, f4, COL_INK)
+    draw_clock_time(draw, "13:37", ":04")
     draw_dots(draw, 0)
     return img
 
 
 def render_weather() -> Image.Image:
     img, draw = new_screen()
-    f2 = load_font(14)
-    f7 = load_font(48, bold=True)
-    text_center(draw, "weather", 52, f2, COL_GRAY)
-    text_center(draw, "18°", 132, f7, COL_INK)
-    text_center(draw, "Partly cloudy", 162, f2, COL_INK)
-    text_center(draw, "12 km/h wind", 182, f2, COL_GRAY)
+    f2 = load_font(15)
+    f7 = load_font(44, bold=True)
+
+    draw_cloud(draw, CX, 82)
+    text_center(draw, "15", 132, f7, COL_INK)
+    text_center(draw, "Cloudy", 162, f2, COL_INK)
+    text_center(draw, "10 km/h wind", 182, f2, COL_GRAY)
     draw_dots(draw, 1)
-    return img
-
-
-def render_network() -> Image.Image:
-    img, draw = new_screen()
-    f2 = load_font(14)
-    f4 = load_font(18, bold=True)
-    text_center(draw, "network", 52, f2, COL_GRAY)
-    text_center(draw, "-58 dBm", 92, f2, COL_INK)
-    for i in range(4):
-        h = 8 + i * 6
-        draw.rectangle((98 + i * 12, 110 - h, 104 + i * 12, 110), fill=COL_INK)
-    text_center(draw, "LAN", 118, f2, COL_GRAY)
-    text_center(draw, "192.168.1.42", 140, f4, COL_INK)
-    text_center(draw, "WAN", 168, f2, COL_GRAY)
-    text_center(draw, "73.45.12.8", 190, f2, COL_INK)
-    draw_dots(draw, 3)
     return img
 
 
 def render_spotify() -> Image.Image:
     img, draw = new_screen()
-    f2 = load_font(14)
-    f4 = load_font(17, bold=True)
+    f2 = load_font(15)
+    f4 = load_font(18, bold=True)
+
+    draw_spotify_bars(draw, CX, 58)
     text_center(draw, "spotify", 96, f2, COL_GRAY)
-    text_center(draw, "Song Title That Scrolls", 128, f4, COL_INK)
-    text_center(draw, "Artist Name", 158, f2, COL_GRAY)
+    text_center(draw, "Bela Lugosi's Dea", 128, f4, COL_INK)
+    text_center(draw, "Bauhaus", 158, f2, COL_GRAY)
     text_center(draw, "playing", 198, f2, COL_INK)
-    for i in range(5):
-        h = 10 + (i % 3) * 8
-        draw.rectangle((88 + i * 10, 72 - h, 94 + i * 10, 72), fill=COL_INK)
     draw_dots(draw, 2)
+    return img
+
+
+def render_network() -> Image.Image:
+    img, draw = new_screen()
+    f2 = load_font(15)
+    f4 = load_font(20, bold=True)
+
+    draw_wifi_bars(draw, CX, 72, filled=3, total=4)
+    text_center(draw, "-57 dBm", 108, f2, COL_GRAY)
+    text_center(draw, "LAN", 118, f2, COL_GRAY)
+    text_center(draw, "192.168.68.50", 140, f4, COL_INK)
+    text_center(draw, "WAN", 168, f2, COL_GRAY)
+    text_center(draw, "173.206.150.196", 190, f2, COL_INK)
+    draw_dots(draw, 3)
     return img
 
 
 def render_notification() -> Image.Image:
     img, draw = new_screen()
-    f2 = load_font(14)
-    f4 = load_font(17, bold=True)
+    f2 = load_font(15)
+    f4 = load_font(18, bold=True)
+
     text_center(draw, "Alert", 78, f2, COL_INK)
     text_center(draw, "Teams", 104, f2, COL_GRAY)
-    text_center(draw, "New message", 138, f4, COL_INK)
-    text_center(draw, "Alex: standup in 5 min", 172, f2, COL_GRAY)
-    return img
-
-
-def render_boot() -> Image.Image:
-    img, draw = new_screen()
-    logo_path = ASSETS / "apple_logo.png"
-    if logo_path.exists():
-        logo = Image.open(logo_path).convert("RGBA")
-        max_side = int(SIZE * 0.68)
-        scale = min(max_side / logo.width, max_side / logo.height)
-        nw, nh = int(logo.width * scale), int(logo.height * scale)
-        logo = logo.resize((nw, nh), Image.Resampling.LANCZOS)
-        ox, oy = CX - nw // 2, CY - nh // 2
-        img.paste(logo, (ox, oy), logo)
-    else:
-        draw.ellipse((CX - 40, CY - 10, CX + 40, CY + 50), fill=COL_INK)
-        draw.polygon([(CX - 12, CY - 30), (CX + 2, CY - 48), (CX + 2, CY - 26)], fill=COL_INK)
+    text_center(draw, "This is a very long", 138, f4, COL_INK)
+    text_center(draw, "And here is an even longer m", 172, f2, COL_GRAY)
     return img
 
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     screens = {
-        "boot-splash": render_boot,
         "clock": render_clock,
         "weather": render_weather,
         "spotify": render_spotify,
@@ -183,4 +214,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

@@ -1,22 +1,23 @@
 # Documentation screenshots
 
-Real device photos (processed to 240×240: straight, cropped to the round display, background removed). Shown in the [README](../../README.md) and docs.
+Straight **240×240** renders that match the on-device UI (e-ink palette, firmware layout).  
+These are generated — not phone photos — so text stays level in the README.
 
-## Regenerate from your photos
-
-1. Save phone photos anywhere, or use the paths baked into `process_device_photos.py`.
-2. Run:
+## Regenerate
 
 ```bash
-.venv/bin/pip install opencv-python-headless numpy pillow
+.venv/bin/python scripts/render_doc_screenshots.py
+```
+
+Content matches the author's clock (e.g. Monday 25 May, Teams alert test, Bauhaus track). Edit the strings in that script if your display differs.
+
+## Optional: photos from the physical device
+
+```bash
 .venv/bin/python scripts/process_device_photos.py
 ```
 
-Optional: pass files in order `clock weather spotify network notification-alert`:
-
-```bash
-.venv/bin/python scripts/process_device_photos.py photo1.jpg photo2.jpg ...
-```
+Phone shots are harder to keep perfectly straight; prefer `render_doc_screenshots.py` for GitHub docs.
 
 | File | Screen |
 |------|--------|

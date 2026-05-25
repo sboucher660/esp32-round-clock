@@ -6,6 +6,8 @@ UID_NUM="$(id -u)"
 launchctl bootout "gui/$UID_NUM" \
   "$HOME/Library/LaunchAgents/com.esp32-round-clock.pages" 2>/dev/null || true
 launchctl bootout "gui/$UID_NUM" \
+  "$HOME/Library/LaunchAgents/com.esp32-round-clock.hotkeys.plist" 2>/dev/null || true
+launchctl bootout "gui/$UID_NUM" \
   "$HOME/Library/LaunchAgents/com.esp32-round-clock.usb-daemon.plist" 2>/dev/null || true
 
 # Kill hung send-page / hotkey Python holding /dev/cu.usbmodem*
@@ -19,7 +21,9 @@ for port in /dev/cu.usbmodem*; do
 done
 
 pkill -f "mac_page_control.py" 2>/dev/null || true
+pkill -f "hotkey_listener.py" 2>/dev/null || true
 pkill -f "esp32-clock-hotkeys" 2>/dev/null || true
+pkill -f "ESP32 Clock.app" 2>/dev/null || true
 pkill -f "send_page.py" 2>/dev/null || true
 
 USB_PY="$HOME/Library/Application Support/esp32-round-clock/usb_daemon.py"

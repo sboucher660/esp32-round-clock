@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Install Karabiner-friendly scripts + optional login cleanup (no background hotkey app).
+# Optional: Karabiner-only setup (no built-in hotkey app).
+# Prefer: ./scripts/install_usb_daemon.sh
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

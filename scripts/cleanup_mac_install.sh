@@ -8,6 +8,7 @@ GUI="gui/$(id -u)"
 echo "Stopping old LaunchAgents..."
 for plist in \
   "$HOME/Library/LaunchAgents/com.esp32-round-clock.pages.plist" \
+  "$HOME/Library/LaunchAgents/com.esp32-round-clock.hotkeys.plist" \
   "$HOME/Library/LaunchAgents/com.esp32-round-clock.login-cleanup.plist"; do
   launchctl bootout "$GUI" "$plist" 2>/dev/null || true
   rm -f "$plist"
@@ -19,9 +20,11 @@ if [[ -f "$APP_DIR/usb_daemon.py" ]]; then
 fi
 pkill -f "usb_daemon.py --run" 2>/dev/null || true
 pkill -f "mac_page_control.py" 2>/dev/null || true
+pkill -f "hotkey_listener.py" 2>/dev/null || true
 
-echo "Removing old hotkey app..."
-rm -rf "$HOME/Applications/ESP32 Clock Hotkeys.app"
+echo "Removing old hotkey apps..."
+rm -rf "$HOME/Applications/ESP32 Clock Hotkeys.app" \
+       "$HOME/Applications/ESP32 Clock.app"
 
 echo "Removing obsolete Application Support files..."
 cd "$APP_DIR" 2>/dev/null || exit 0
@@ -30,6 +33,7 @@ rm -f \
   clock-host.txt \
   login-cleanup.log \
   mac_page_control.py \
+  hotkey_listener.py \
   requirements.txt \
   hotkey-events.log 2>/dev/null || true
 rm -rf logs 2>/dev/null || true

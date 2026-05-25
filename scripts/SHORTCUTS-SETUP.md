@@ -1,6 +1,8 @@
-# Page hotkeys via Apple Shortcuts (no Accessibility fight)
+# Page hotkeys via Apple Shortcuts (fallback)
 
-Use this if **ESP32 Clock Hotkeys** still does not receive keyboard events.
+**Default:** run `./scripts/install_usb_daemon.sh` — hotkeys work via **ESP32 Clock.app** (one-time Accessibility).
+
+Use this guide only if the built-in hotkey app is blocked or you prefer Shortcuts.
 
 ## 1. Test USB first
 

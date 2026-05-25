@@ -12,7 +12,7 @@ Firmware and Mac helpers for the **ESP32-C3 1.28" round GC9A01** board (ESP32-24
 | **Network** | Wi-Fi RSSI, LAN / public IP |
 
 - **BOOT button (GPIO 9):** tap to change page (do not hold — flash mode)
-- **Mac hotkeys (optional):** instant USB control via Karabiner + LaunchAgent daemon
+- **Mac hotkeys (optional):** ⌘⇧ arrows — built-in app, no Karabiner (`./scripts/install_usb_daemon.sh`)
 - **Display rotation:** 90° steps, saved on device
 - **Boot splash:** your Apple logo image ([assets/](assets/))
 - **3D case:** Mini Mac–style enclosure ([case/README.md](case/README.md))
@@ -74,13 +74,13 @@ pio run -e esp32c3_round -t upload
 
 On the device: tap **BOOT** to cycle screens.
 
-### Mac hotkeys (Karabiner)
+### Mac hotkeys (built-in)
 
 ```bash
 ./scripts/install_usb_daemon.sh
 ```
 
-Import `scripts/karabiner-esp32-clock.json` in Karabiner. Default bindings:
+Registers global shortcuts automatically (no Karabiner). **Once:** enable **ESP32 Clock** in System Settings → Privacy → Accessibility.
 
 | Shortcut | Action |
 |----------|--------|
@@ -126,7 +126,7 @@ Side tact switch on many boards is a **battery power key**, not usable for pages
 esp32-round-clock/
 ├── src/main.cpp          # Firmware
 ├── include/              # config.h, secrets template
-├── scripts/              # Mac USB daemon, Karabiner, Spotify auth
+├── scripts/              # Mac USB daemon, hotkeys, Spotify auth
 ├── case/                 # OpenSCAD + STL for 3D print
 ├── docs/                 # Install, Mac control, GPIO diagram
 └── platformio.ini

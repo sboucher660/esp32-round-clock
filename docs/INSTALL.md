@@ -1,6 +1,6 @@
 # Install guide
 
-ESP32-C3 round display clock: firmware + optional Mac USB hotkeys (Karabiner).
+ESP32-C3 round display clock: firmware + optional Mac USB hotkeys.
 
 <p align="center">
   <img src="images/clock.png" width="180" alt="Clock screen" />
@@ -13,7 +13,7 @@ ESP32-C3 round display clock: firmware + optional Mac USB hotkeys (Karabiner).
 |-----------|---------|
 | **PlatformIO** | `brew install platformio` |
 | **Python 3** | macOS built-in or Homebrew |
-| **Karabiner-Elements** | [karabiner-elements.pqrs.org](https://karabiner-elements.pqrs.org/) (Mac hotkeys only) |
+| **Accessibility** (once) | System Settings → enable **ESP32 Clock** for global hotkeys |
 | **Board** | ESP32-2424S012 family (1.28" round GC9A01, ESP32-C3) |
 
 ## 1. Clone and configure firmware
@@ -74,10 +74,11 @@ If upload fails: hold **BOOT**, tap **RESET**, release **BOOT**, retry.
 
 ## 4. Mac USB hotkeys (optional)
 
-Instant control over USB via a **LaunchAgent daemon**. Nothing installed in `$HOME` root — only:
+One install sets up the USB daemon **and** global shortcuts (no Karabiner):
 
 - `~/Library/Application Support/esp32-round-clock/`
 - `~/Library/LaunchAgents/com.esp32-round-clock.usb-daemon.plist`
+- `~/Applications/ESP32 Clock.app` (hotkeys at login)
 
 ### Install
 
@@ -85,18 +86,11 @@ Instant control over USB via a **LaunchAgent daemon**. Nothing installed in `$HO
 ./scripts/install_usb_daemon.sh
 ```
 
-### Commands
+**Once:** System Settings → Privacy & Security → **Accessibility** → enable **ESP32 Clock**, then:
 
 ```bash
-~/Library/Application\ Support/esp32-round-clock/send-page.sh next
-~/Library/Application\ Support/esp32-round-clock/send-page.sh prev
-~/Library/Application\ Support/esp32-round-clock/send-rotate.sh right
-~/Library/Application\ Support/esp32-round-clock/send-rotate.sh left
+open -a 'ESP32 Clock'
 ```
-
-### Karabiner
-
-Import `scripts/karabiner-esp32-clock.json` in **Karabiner-Elements → Complex Modifications**.
 
 | Shortcut | Action |
 |----------|--------|
@@ -105,9 +99,16 @@ Import `scripts/karabiner-esp32-clock.json` in **Karabiner-Elements → Complex 
 | ⌘⇧↑ | Rotate right (90°) |
 | ⌘⇧↓ | Rotate left (90°) |
 
-Enable **Input Monitoring** for Karabiner in System Settings.
+### Shell commands (same as hotkeys)
 
-See [MAC-CONTROL.md](MAC-CONTROL.md) for troubleshooting.
+```bash
+~/Library/Application\ Support/esp32-round-clock/send-page.sh next
+~/Library/Application\ Support/esp32-round-clock/send-page.sh prev
+~/Library/Application\ Support/esp32-round-clock/send-rotate.sh right
+~/Library/Application\ Support/esp32-round-clock/send-rotate.sh left
+```
+
+See [MAC-CONTROL.md](MAC-CONTROL.md) for troubleshooting. Karabiner/Shortcuts are optional fallbacks only.
 
 ### Before re-flashing firmware
 
@@ -137,6 +138,5 @@ See [case/README.md](../case/README.md). Print `case/stl/mini-mac-body.stl` and 
 | Blank display | Try `DISPLAY_ROTATION` 0–3 in `config.h`, reflash |
 | Wi-Fi failed | 2.4 GHz network, check `secrets.h` |
 | Upload port busy | `./scripts/stop-hotkeys.sh` |
-| Mac hotkey does nothing | Reboot clock; `send-page.sh --restart-daemon next`; check `usb-daemon.log` |
-| Karabiner no effect | Input Monitoring on; rules enabled |
-| Page works in Terminal, not Karabiner | Fix `shell_command` path to Application Support scripts |
+| Mac hotkey does nothing | Accessibility ON for **ESP32 Clock**; `open -a 'ESP32 Clock'`; check `hotkey-events.log` |
+| Page works in Terminal, not hotkeys | Same; `send-page.sh --restart-daemon next` |

@@ -1,23 +1,23 @@
 # Documentation screenshots
 
-Straight **240×240** renders that match the on-device UI (e-ink palette, firmware layout).  
-These are generated — not phone photos — so text stays level in the README.
+**240×240** crops from your phone photos (`assets/doc-photos/`).  
+Circular display only — **transparent outside the dial** (no square matte in the PNG).
 
-## Regenerate
-
-```bash
-.venv/bin/python scripts/render_doc_screenshots.py
-```
-
-Content matches the author's clock (e.g. Monday 25 May, Teams alert test, Bauhaus track). Edit the strings in that script if your display differs.
-
-## Optional: photos from the physical device
+## Regenerate (recommended)
 
 ```bash
 .venv/bin/python scripts/process_device_photos.py
 ```
 
-Phone shots are harder to keep perfectly straight; prefer `render_doc_screenshots.py` for GitHub docs.
+Keeps real TFT fonts, spacing, and colours from the device.
+
+## Optional: synthetic renders
+
+```bash
+.venv/bin/python scripts/render_doc_screenshots.py
+```
+
+Approximates firmware layout when you have no photos; will not match the camera shot pixel-for-pixel.
 
 | File | Screen |
 |------|--------|

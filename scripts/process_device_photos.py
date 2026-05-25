@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Extract clean, level 240×240 display shots from phone photos."""
+"""Extract level 240×240 doc shots from phone photos of the physical display.
+
+Output is a circular PNG with transparent corners (no square matte around the dial).
+Preserves on-device fonts, spacing, and colours from your photos.
+
+  .venv/bin/python scripts/process_device_photos.py
+"""
 
 from __future__ import annotations
 
@@ -14,6 +20,7 @@ ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "docs" / "images"
 SRC_DIR = ROOT / "assets" / "doc-photos"
 OUT_SIZE = 240
+DISPLAY_RADIUS_FRAC = 0.46  # fraction of output side for active circle
 
 DEFAULT_INPUTS: dict[str, Path] = {
     "clock.png": SRC_DIR / "clock-source.png",
@@ -23,7 +30,6 @@ DEFAULT_INPUTS: dict[str, Path] = {
     "notification-alert.png": SRC_DIR / "notification-source.png",
 }
 
-# Fallback: Cursor upload cache (first run copies into assets/doc-photos/)
 CURSOR_SOURCES: dict[str, Path] = {
     "clock.png": Path(
         "/Users/seb/Library/Application Support/Cursor/User/workspaceStorage/"
@@ -60,6 +66,7 @@ def order_quad(pts: np.ndarray) -> np.ndarray:
 
 
 def display_mask(bgr: np.ndarray) -> np.ndarray:
+    """Mask of the lit round panel (blue-gray e-ink background in photos)."""
     hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
     mask = cv2.inRange(hsv, (78, 25, 90), (115, 255, 255))
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((21, 21), np.uint8))
@@ -97,10 +104,10 @@ def find_display_circle(bgr: np.ndarray) -> tuple[int, int, int]:
     contour = largest_contour(mask)
     if contour is not None:
         (cx, cy), radius = cv2.minEnclosingCircle(contour)
-        return int(cx), int(cy), int(radius * 0.94)
+        return int(cx), int(cy), int(radius * 0.96)
 
     h, w = bgr.shape[:2]
-    return w // 2, h // 2, int(min(h, w) * 0.44)
+    return w // 2, h // 2, int(min(h, w) * DISPLAY_RADIUS_FRAC)
 
 
 def text_mask(bgr: np.ndarray, disp_mask: np.ndarray) -> np.ndarray:
@@ -109,33 +116,7 @@ def text_mask(bgr: np.ndarray, disp_mask: np.ndarray) -> np.ndarray:
     return cv2.bitwise_and(bright, disp_mask)
 
 
-def rotation_from_hough(mask: np.ndarray) -> float | None:
-    edges = cv2.Canny(mask, 50, 150)
-    lines = cv2.HoughLinesP(edges, 1, np.pi / 180, 28, minLineLength=36, maxLineGap=10)
-    if lines is None:
-        return None
-
-    angles: list[float] = []
-    for line in lines[:60]:
-        x1, y1, x2, y2 = line[0]
-        dx, dy = x2 - x1, y2 - y1
-        if abs(dx) < 6:
-            continue
-        ang = np.degrees(np.arctan2(dy, dx))
-        while ang > 45:
-            ang -= 90.0
-        while ang < -45:
-            ang += 90.0
-        if abs(ang) <= 18:
-            angles.append(ang)
-
-    if not angles:
-        return None
-    return float(np.median(angles))
-
-
 def rotation_search(mask: np.ndarray, center: tuple[float, float]) -> float:
-    """Pick angle where text bounding box is flattest (min height = horizontal lines)."""
     h, w = mask.shape[:2]
     best_angle = 0.0
     best_height = 1e9
@@ -155,19 +136,6 @@ def rotation_search(mask: np.ndarray, center: tuple[float, float]) -> float:
     return best_angle
 
 
-def estimate_skew_angle(bgr: np.ndarray) -> tuple[float, tuple[float, float]]:
-    disp = display_mask(bgr)
-    contour = largest_contour(disp)
-    if contour is None:
-        h, w = bgr.shape[:2]
-        return 0.0, (w / 2, h / 2)
-
-    (cx, cy), _r = cv2.minEnclosingCircle(contour)
-    center = (float(cx), float(cy))
-    tmask = text_mask(bgr, disp)
-    return rotation_search(tmask, center), center
-
-
 def rotate_about(bgr: np.ndarray, center: tuple[float, float], angle: float) -> np.ndarray:
     if abs(angle) < 0.25:
         return bgr
@@ -176,18 +144,33 @@ def rotate_about(bgr: np.ndarray, center: tuple[float, float], angle: float) -> 
     return cv2.warpAffine(bgr, m, (w, h), flags=cv2.INTER_LANCZOS4, borderMode=cv2.BORDER_REPLICATE)
 
 
-def sample_edge_color(bgr: np.ndarray, cx: int, cy: int, r: int) -> np.ndarray:
-    h, w = bgr.shape[:2]
-    samples = []
-    for deg in range(0, 360, 10):
-        rad = np.deg2rad(deg)
-        x = int(cx + np.cos(rad) * (r * 0.84))
-        y = int(cy + np.sin(rad) * (r * 0.84))
-        if 0 <= x < w and 0 <= y < h:
-            samples.append(bgr[y, x])
-    if samples:
-        return np.median(samples, axis=0).astype(np.uint8)
-    return np.array([176, 198, 210], dtype=np.uint8)
+def apply_circle_alpha(bgra: np.ndarray, rcx: int, rcy: int, rr: int) -> np.ndarray:
+    mask = np.zeros((OUT_SIZE, OUT_SIZE), dtype=np.uint8)
+    cv2.circle(mask, (rcx, rcy), rr, 255, -1)
+    mask = cv2.GaussianBlur(mask, (5, 5), 0)
+    out = bgra.copy()
+    out[:, :, 3] = cv2.min(out[:, :, 3], mask)
+    return out
+
+
+def final_deskew(bgra: np.ndarray, rcx: int, rcy: int, rr: int) -> np.ndarray:
+    rgb = bgra[:, :, :3]
+    panel = np.zeros((OUT_SIZE, OUT_SIZE), dtype=np.uint8)
+    cv2.circle(panel, (rcx, rcy), rr, 255, -1)
+    tmask = text_mask(rgb, panel)
+    angle = rotation_search(tmask, (OUT_SIZE / 2, OUT_SIZE / 2))
+    if abs(angle) < 0.2:
+        return bgra
+    m = cv2.getRotationMatrix2D((OUT_SIZE / 2, OUT_SIZE / 2), angle, 1.0)
+    rotated = cv2.warpAffine(
+        bgra,
+        m,
+        (OUT_SIZE, OUT_SIZE),
+        flags=cv2.INTER_LANCZOS4,
+        borderMode=cv2.BORDER_CONSTANT,
+        borderValue=(0, 0, 0, 0),
+    )
+    return apply_circle_alpha(rotated, rcx, rcy, rr)
 
 
 def extract_display(bgr: np.ndarray, out_size: int = OUT_SIZE) -> np.ndarray:
@@ -211,17 +194,13 @@ def extract_display(bgr: np.ndarray, out_size: int = OUT_SIZE) -> np.ndarray:
     patch = rotate_about(patch, mid, fine)
 
     rcx, rcy, rr = find_display_circle(patch)
-    rr = max(10, rr - 8)
-    bg = sample_edge_color(patch, rcx, rcy, rr)
+    # Trim outer bezel; keep only the lit panel
+    rr = max(10, int(rr * 0.92))
 
-    mask = np.zeros((out_size, out_size), dtype=np.uint8)
-    cv2.circle(mask, (rcx, rcy), rr, 255, -1)
-
-    smooth = cv2.bilateralFilter(patch, 5, 55, 55)
-    denoised = cv2.fastNlMeansDenoisingColored(smooth, None, 3, 3, 7, 15)
-    bg_img = np.full_like(denoised, bg)
-    mask3 = cv2.merge([mask, mask, mask]) / 255.0
-    return np.where(mask3 > 0.5, denoised, bg_img).astype(np.uint8)
+    sharp = cv2.addWeighted(patch, 1.15, cv2.GaussianBlur(patch, (0, 0), 1.2), -0.15, 0)
+    bgra = cv2.cvtColor(sharp, cv2.COLOR_BGR2BGRA)
+    bgra = apply_circle_alpha(bgra, rcx, rcy, rr)
+    return final_deskew(bgra, rcx, rcy, rr)
 
 
 def resolve_source(out_name: str) -> Path:
@@ -245,7 +224,7 @@ def process_file(src: Path, dest: Path) -> None:
     out = extract_display(bgr)
     dest.parent.mkdir(parents=True, exist_ok=True)
     cv2.imwrite(str(dest), out, [cv2.IMWRITE_PNG_COMPRESSION, 9])
-    print(f"{src.name} → {dest}  (straighten applied)")
+    print(f"{src.name} → {dest}  (circular, transparent outside)")
 
 
 def main() -> int:

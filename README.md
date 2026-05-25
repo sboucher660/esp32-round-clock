@@ -31,7 +31,7 @@ Firmware and Mac helpers for the **ESP32-C3 1.28" round GC9A01** board (ESP32-24
 
 <p align="center"><em>Clock · Weather · Spotify · Network · Mac notification (15s overlay)</em></p>
 
-More detail: [docs/images/](docs/images/) · regenerate with <code>scripts/render_doc_screenshots.py</code>
+More detail: [docs/images/](docs/images/) · regenerate from your photos with <code>scripts/process_device_photos.py</code>
 
 ## Quick start
 

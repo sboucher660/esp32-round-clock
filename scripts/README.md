@@ -29,8 +29,8 @@ Installed copy lives at:
 |--------|---------|
 | `spotify_get_refresh_token.py` | One-time Spotify OAuth → `secrets.h` lines |
 | `png_to_logo_h.py` | Boot splash image → `include/apple_logo.h` |
-| `render_doc_screenshots.py` | **Docs screenshots** — straight renders for README |
-| `process_device_photos.py` | Optional: crop/deskew phone photos |
+| `process_device_photos.py` | **Docs screenshots** — crop/deskew your phone photos (circular PNG, transparent outside) |
+| `render_doc_screenshots.py` | Optional synthetic renders when you have no photos |
 
 ## Legacy (not needed for current setup)
 

@@ -2,6 +2,11 @@
 
 ESP32-C3 round display clock: firmware + optional Mac USB hotkeys (Karabiner).
 
+<p align="center">
+  <img src="images/clock.png" width="180" alt="Clock screen" />
+  <img src="images/weather.png" width="180" alt="Weather screen" />
+</p>
+
 ## Requirements
 
 | Component | Install |

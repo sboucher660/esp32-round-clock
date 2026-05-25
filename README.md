@@ -17,6 +17,23 @@ Firmware and Mac helpers for the **ESP32-C3 1.28" round GC9A01** board (ESP32-24
 - **Boot splash:** your Apple logo image ([assets/](assets/))
 - **3D case:** Mini Mac–style enclosure ([case/README.md](case/README.md))
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/images/boot-splash.png" width="160" alt="Boot splash" />
+  <img src="docs/images/clock.png" width="160" alt="Clock" />
+  <img src="docs/images/weather.png" width="160" alt="Weather" />
+</p>
+<p align="center">
+  <img src="docs/images/spotify.png" width="160" alt="Spotify" />
+  <img src="docs/images/network.png" width="160" alt="Network" />
+  <img src="docs/images/notification-alert.png" width="160" alt="Notification alert" />
+</p>
+
+<p align="center"><em>Boot · Clock · Weather · Spotify · Network · Mac notification (15s overlay)</em></p>
+
+More detail: [docs/images/](docs/images/) · regenerate with <code>scripts/render_doc_screenshots.py</code>
+
 ## Quick start
 
 **Full guide:** [docs/INSTALL.md](docs/INSTALL.md)

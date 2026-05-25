@@ -29,6 +29,7 @@ Installed copy lives at:
 |--------|---------|
 | `spotify_get_refresh_token.py` | One-time Spotify OAuth → `secrets.h` lines |
 | `png_to_logo_h.py` | Boot splash image → `include/apple_logo.h` |
+| `render_doc_screenshots.py` | Generate `docs/images/*.png` for README |
 
 ## Legacy (not needed for current setup)
 

@@ -2,6 +2,10 @@
 
 When a notification arrives on your Mac, the clock can **switch to an alert screen for 15 seconds**, then return to whatever page it was showing (clock, weather, Spotify, or network).
 
+<p align="center">
+  <img src="images/notification-alert.png" width="220" alt="Notification alert screen" />
+</p>
+
 ## Requirements
 
 - Clock on **Wi-Fi** (same network as your Mac)

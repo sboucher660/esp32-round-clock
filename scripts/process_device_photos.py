@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Extract level 240×240 doc shots from phone photos of the physical display.
+"""Extract 240×240 circular doc shots from phone photos.
 
-Output is a circular PNG with transparent corners (no square matte around the dial).
-Preserves on-device fonts, spacing, and colours from your photos.
+Keeps only the round display (transparent outside the circle). Works with
+light e-ink panels, black OLED-style screens, and boot splash.
 
   .venv/bin/python scripts/process_device_photos.py
 """
@@ -10,6 +10,7 @@ Preserves on-device fonts, spacing, and colours from your photos.
 from __future__ import annotations
 
 import argparse
+import shutil
 import sys
 from pathlib import Path
 
@@ -20,10 +21,11 @@ ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "docs" / "images"
 SRC_DIR = ROOT / "assets" / "doc-photos"
 OUT_SIZE = 240
-DISPLAY_RADIUS = 110
-TEXT_THRESHOLD = 188
-SKEW_ANGLE_LIMIT = 35.0
 COARSE_SKEW_LIMIT = 12.0
+
+CURSOR_DIR = Path(
+    "/Users/seb/Library/Application Support/Cursor/User/workspaceStorage/empty-window/images"
+)
 
 DEFAULT_INPUTS: dict[str, Path] = {
     "clock.png": SRC_DIR / "clock-source.png",
@@ -31,49 +33,48 @@ DEFAULT_INPUTS: dict[str, Path] = {
     "spotify.png": SRC_DIR / "spotify-source.png",
     "network.png": SRC_DIR / "network-source.png",
     "notification-alert.png": SRC_DIR / "notification-source.png",
+    "boot-splash.png": SRC_DIR / "boot-splash-source.png",
 }
 
+# Latest Cursor chat uploads
 CURSOR_SOURCES: dict[str, Path] = {
-    "clock.png": Path(
-        "/Users/seb/Library/Application Support/Cursor/User/workspaceStorage/"
-        "empty-window/images/84939662-F87F-450D-BBD2-4B3963C34C9E-1441374c-e6fd-4276-9c70-461d9010a285.png"
-    ),
-    "weather.png": Path(
-        "/Users/seb/Library/Application Support/Cursor/User/workspaceStorage/"
-        "empty-window/images/130A17E7-2487-4BBE-ACBB-CF759CB9423A-f8444e41-dca4-4ba9-b96b-7fe7fd4a89ee.png"
-    ),
-    "spotify.png": Path(
-        "/Users/seb/Library/Application Support/Cursor/User/workspaceStorage/"
-        "empty-window/images/8F6C81A8-BBF1-43FC-B1C4-32954E4EE996-94f8d59f-ed24-4546-97ad-fdc7e4f4b116.png"
-    ),
-    "network.png": Path(
-        "/Users/seb/Library/Application Support/Cursor/User/workspaceStorage/"
-        "empty-window/images/2FE6E3D3-A450-4350-BDB6-C2169408574E-0d89f41a-0370-4e2b-a26b-c5ac6b5bca56.png"
-    ),
-    "notification-alert.png": Path(
-        "/Users/seb/Library/Application Support/Cursor/User/workspaceStorage/"
-        "empty-window/images/58AC6115-F2C9-499F-9C02-489D8BC93144-2d957e07-8239-4bf1-b36b-acb48eb8ccad.png"
-    ),
+    "clock.png": CURSOR_DIR
+    / "A466AC0B-ED26-41A3-92CB-1E817D4A59E3-501e4a15-1dd7-4794-8378-80862a0e62ef.png",
+    "weather.png": CURSOR_DIR
+    / "6619233E-EDF3-4B86-8C43-E69441B8D98F-69e6fdff-7d33-40fd-bfcb-2bc2added769.png",
+    "spotify.png": CURSOR_DIR
+    / "12688796-A56E-4998-853E-ADBAF9D8F286-b92285da-c596-4472-a05f-8bbbf5c35d66.png",
+    "network.png": CURSOR_DIR
+    / "0288E823-ABBA-444E-AE02-A50777C66E75-dbfe81e6-61ba-44f9-ac36-bb42d8f29cf8.png",
+    "notification-alert.png": CURSOR_DIR
+    / "DF224BE5-3B5B-4BAA-A6BD-DBFB5A49A46E-0146f87d-81cf-4733-8fdb-5a4e502fbb5d.png",
+    "boot-splash.png": CURSOR_DIR
+    / "A27721C5-2837-4232-93AE-C726D8CAD42F-438ba501-8876-4914-9794-64dac4354b61.png",
 }
 
 
-def order_quad(pts: np.ndarray) -> np.ndarray:
-    rect = np.zeros((4, 2), dtype=np.float32)
-    s = pts.sum(axis=1)
-    diff = np.diff(pts, axis=1).reshape(-1)
-    rect[0] = pts[np.argmin(s)]
-    rect[2] = pts[np.argmax(s)]
-    rect[1] = pts[np.argmin(diff)]
-    rect[3] = pts[np.argmax(diff)]
-    return rect
-
-
-def display_mask(bgr: np.ndarray) -> np.ndarray:
+def light_panel_mask(bgr: np.ndarray) -> np.ndarray:
+    """E-ink / light-gray active display (not black OLED)."""
     hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
-    mask = cv2.inRange(hsv, (78, 25, 90), (115, 255, 255))
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((21, 21), np.uint8))
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((9, 9), np.uint8))
+    cyan = cv2.inRange(hsv, (78, 20, 85), (115, 255, 255))
+    light_gray = cv2.inRange(hsv, (0, 0, 95), (180, 70, 240))
+    mask = cv2.bitwise_or(cyan, light_gray)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((17, 17), np.uint8))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((7, 7), np.uint8))
     return mask
+
+
+def dark_panel_mask(bgr: np.ndarray) -> np.ndarray:
+    """Black OLED active display."""
+    gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
+    dark = (gray < 58).astype(np.uint8) * 255
+    dark = cv2.morphologyEx(dark, cv2.MORPH_CLOSE, np.ones((31, 31), np.uint8))
+    dark = cv2.morphologyEx(dark, cv2.MORPH_OPEN, np.ones((9, 9), np.uint8))
+    return dark
+
+
+def panel_mask(bgr: np.ndarray) -> np.ndarray:
+    return cv2.bitwise_or(light_panel_mask(bgr), dark_panel_mask(bgr))
 
 
 def largest_contour(mask: np.ndarray) -> np.ndarray | None:
@@ -81,46 +82,76 @@ def largest_contour(mask: np.ndarray) -> np.ndarray | None:
     if not contours:
         return None
     c = max(contours, key=cv2.contourArea)
-    if cv2.contourArea(c) < 500:
+    if cv2.contourArea(c) < 800:
         return None
     return c
 
 
-def warp_display_frontal(bgr: np.ndarray) -> np.ndarray:
-    mask = display_mask(bgr)
-    contour = largest_contour(mask)
-    if contour is None:
-        return bgr
-
-    rect = cv2.minAreaRect(contour)
-    box = order_quad(cv2.boxPoints(rect))
-    side = int(max(rect[1]) * 1.05)
-    side = max(side, 140)
-    dst = np.array([[0, 0], [side - 1, 0], [side - 1, side - 1], [0, side - 1]], dtype=np.float32)
-    m = cv2.getPerspectiveTransform(box, dst)
-    return cv2.warpPerspective(bgr, m, (side, side), flags=cv2.INTER_LANCZOS4)
+def _circle_from_contour(contour: np.ndarray, trim: float) -> tuple[int, int, int]:
+    (cx, cy), radius = cv2.minEnclosingCircle(contour)
+    return int(cx), int(cy), max(10, int(radius * trim))
 
 
-def find_display_circle(bgr: np.ndarray) -> tuple[int, int, int]:
-    mask = display_mask(bgr)
-    contour = largest_contour(mask)
-    if contour is not None:
-        (cx, cy), radius = cv2.minEnclosingCircle(contour)
-        return int(cx), int(cy), int(radius * 0.96)
-
+def detect_circle(bgr: np.ndarray) -> tuple[int, int, int]:
     h, w = bgr.shape[:2]
-    return w // 2, h // 2, int(min(h, w) * 0.46)
-
-
-def text_mask(bgr: np.ndarray, panel_mask: np.ndarray) -> np.ndarray:
     gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
-    _, bright = cv2.threshold(gray, TEXT_THRESHOLD, 255, cv2.THRESH_BINARY)
-    tm = cv2.bitwise_and(bright, panel_mask)
+    min_area = (min(h, w) * 0.28) ** 2
+
+    # Light e-ink panel first (avoid mistaking outer black bezel for the screen)
+    light_c = largest_contour(light_panel_mask(bgr))
+    if light_c is not None and cv2.contourArea(light_c) > min_area * 0.45:
+        return _circle_from_contour(light_c, 0.88)
+
+    dark_c = largest_contour(dark_panel_mask(bgr))
+    if dark_c is not None and cv2.contourArea(dark_c) > min_area:
+        cx, cy, r = _circle_from_contour(dark_c, 0.90)
+        roi = gray[max(0, cy - r) : cy + r, max(0, cx - r) : cx + r]
+        if roi.size and float(np.median(roi)) < 70:
+            return cx, cy, r
+
+    gray_blur = cv2.GaussianBlur(gray, (7, 7), 0)
+    circles = cv2.HoughCircles(
+        gray_blur,
+        cv2.HOUGH_GRADIENT,
+        dp=1.15,
+        minDist=min(h, w) // 2,
+        param1=100,
+        param2=34,
+        minRadius=int(min(h, w) * 0.22),
+        maxRadius=int(min(h, w) * 0.48),
+    )
+    if circles is not None:
+        best: tuple[int, int, int] | None = None
+        best_score = 1e9
+        for c in circles[0]:
+            cx, cy, r = float(c[0]), float(c[1]), float(c[2])
+            dist = (cx - w / 2) ** 2 + (cy - h / 2) ** 2
+            score = dist + abs(r - min(h, w) * 0.35) * 8
+            if score < best_score:
+                best_score = score
+                best = (int(cx), int(cy), int(r * 0.90))
+        if best is not None:
+            return best
+
+    return w // 2, h // 2, int(min(h, w) * 0.42)
+
+
+def text_mask(bgr: np.ndarray, panel: np.ndarray, dark_ui: bool) -> np.ndarray:
+    gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
+    thresh = 120 if dark_ui else 175
+    _, bright = cv2.threshold(gray, thresh, 255, cv2.THRESH_BINARY)
+    tm = cv2.bitwise_and(bright, panel)
     return cv2.morphologyEx(tm, cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))
 
 
+def is_dark_panel(bgr: np.ndarray, cx: int, cy: int, r: int) -> bool:
+    patch = bgr[max(0, cy - r) : cy + r, max(0, cx - r) : cx + r]
+    if patch.size == 0:
+        return False
+    return float(np.median(patch)) < 42
+
+
 def skew_detection_mask(text: np.ndarray) -> np.ndarray:
-    """Ignore page dots and top bezel for angle detection."""
     h, w = text.shape
     m = text.copy()
     m[int(h * 0.82) :, :] = 0
@@ -133,7 +164,6 @@ def hough_skew_angle(mask: np.ndarray) -> float | None:
     lines = cv2.HoughLinesP(edges, 1, np.pi / 180, 18, minLineLength=22, maxLineGap=12)
     if lines is None:
         return None
-
     angles: list[float] = []
     for line in lines:
         x1, y1, x2, y2 = line[0]
@@ -147,37 +177,37 @@ def hough_skew_angle(mask: np.ndarray) -> float | None:
             ang += 90.0
         if abs(ang) <= 25:
             angles.append(ang)
-
     if not angles:
         return None
     return float(np.median(angles))
 
 
-def measure_skew_on_bgr(bgr: np.ndarray) -> float | None:
-    panel = display_mask(bgr)
-    text = skew_detection_mask(text_mask(bgr, panel))
+def measure_skew(bgr: np.ndarray, dark_ui: bool) -> float | None:
+    panel = panel_mask(bgr)
+    text = skew_detection_mask(text_mask(bgr, panel, dark_ui))
     if text.sum() < 300:
         return None
     return hough_skew_angle(text)
 
 
-def find_straighten_angle(
-    bgr: np.ndarray,
-    center: tuple[float, float],
-    limit: float = SKEW_ANGLE_LIMIT,
-    steps: int = 161,
-) -> float:
-    """Pick rotation that minimizes |hough skew| on the rotated frame."""
-    if display_mask(bgr).sum() < 400:
-        return 0.0
+def rotate_bgr(bgr: np.ndarray, center: tuple[float, float], angle: float) -> np.ndarray:
+    if abs(angle) < 0.15:
+        return bgr
+    h, w = bgr.shape[:2]
+    m = cv2.getRotationMatrix2D(center, angle, 1.0)
+    return cv2.warpAffine(bgr, m, (w, h), flags=cv2.INTER_LANCZOS4, borderMode=cv2.BORDER_REPLICATE)
 
-    initial = measure_skew_on_bgr(bgr)
+
+def find_straighten_angle(bgr: np.ndarray, center: tuple[float, float], dark_ui: bool) -> float:
+    if panel_mask(bgr).sum() < 400:
+        return 0.0
+    initial = measure_skew(bgr, dark_ui)
     best_angle = 0.0
     best_residual = abs(initial) if initial is not None else 90.0
 
-    for angle in np.linspace(-limit, limit, steps):
+    for angle in np.linspace(-COARSE_SKEW_LIMIT, COARSE_SKEW_LIMIT, 161):
         rotated = rotate_bgr(bgr, center, float(angle))
-        ha = measure_skew_on_bgr(rotated)
+        ha = measure_skew(rotated, dark_ui)
         if ha is None:
             continue
         residual = abs(ha)
@@ -192,14 +222,6 @@ def find_straighten_angle(
     return best_angle
 
 
-def rotate_bgr(bgr: np.ndarray, center: tuple[float, float], angle: float) -> np.ndarray:
-    if abs(angle) < 0.15:
-        return bgr
-    h, w = bgr.shape[:2]
-    m = cv2.getRotationMatrix2D(center, angle, 1.0)
-    return cv2.warpAffine(bgr, m, (w, h), flags=cv2.INTER_LANCZOS4, borderMode=cv2.BORDER_REPLICATE)
-
-
 def apply_circle_alpha(bgra: np.ndarray, rcx: int, rcy: int, rr: int) -> np.ndarray:
     mask = np.zeros((OUT_SIZE, OUT_SIZE), dtype=np.uint8)
     cv2.circle(mask, (rcx, rcy), rr, 255, -1)
@@ -209,44 +231,53 @@ def apply_circle_alpha(bgra: np.ndarray, rcx: int, rcy: int, rr: int) -> np.ndar
     return out
 
 
-def extract_display(bgr: np.ndarray, out_size: int = OUT_SIZE) -> np.ndarray:
-    bgr = warp_display_frontal(bgr)
+def extract_display(bgr: np.ndarray) -> np.ndarray:
+    cx, cy, r = detect_circle(bgr)
+    dark_ui = is_dark_panel(bgr, cx, cy, r)
 
-    cx, cy, r = find_display_circle(bgr)
+    # Tight square crop — trim bezel (more on light e-ink panels)
+    trim = 0.96 if dark_ui else 0.82
+    r_crop = max(10, int(r * trim))
     h, w = bgr.shape[:2]
-    x1, x2 = max(0, cx - r), min(w, cx + r)
-    y1, y2 = max(0, cy - r), min(h, cy + r)
+    x1, x2 = max(0, cx - r_crop), min(w, cx + r_crop)
+    y1, y2 = max(0, cy - r_crop), min(h, cy + r_crop)
     patch = bgr[y1:y2, x1:x2].copy()
-    patch = cv2.resize(patch, (out_size, out_size), interpolation=cv2.INTER_LANCZOS4)
 
-    center = (out_size / 2, out_size / 2)
-    angle = find_straighten_angle(patch, center, limit=COARSE_SKEW_LIMIT, steps=161)
+    center = (patch.shape[1] / 2, patch.shape[0] / 2)
+    angle = find_straighten_angle(patch, center, dark_ui)
     if abs(angle) >= 0.15:
         patch = rotate_bgr(patch, center, angle)
 
-    # Refine: rotate by remaining line tilt (fixes false ±mirror Hough minima)
     for _ in range(3):
-        ha = measure_skew_on_bgr(patch)
+        ha = measure_skew(patch, dark_ui)
         if ha is None or abs(ha) < 0.4:
             break
+        center = (patch.shape[1] / 2, patch.shape[0] / 2)
         patch = rotate_bgr(patch, center, ha)
 
+    patch = cv2.resize(patch, (OUT_SIZE, OUT_SIZE), interpolation=cv2.INTER_LANCZOS4)
+
+    # Re-fit circle on final frame for a clean mask
+    cx2, cy2, r2 = detect_circle(patch)
+    trim2 = 0.96 if is_dark_panel(patch, cx2, cy2, r2) else 0.90
+    r2 = max(10, min(int(r2 * trim2), OUT_SIZE // 2 - 2))
+
     bgra = cv2.cvtColor(patch, cv2.COLOR_BGR2BGRA)
-    return apply_circle_alpha(bgra, OUT_SIZE // 2, OUT_SIZE // 2, DISPLAY_RADIUS)
+    return apply_circle_alpha(bgra, cx2, cy2, r2)
 
 
 def resolve_source(out_name: str) -> Path:
     local = DEFAULT_INPUTS[out_name]
-    if local.is_file():
-        return local
-    cursor = CURSOR_SOURCES[out_name]
-    if cursor.is_file():
+    cursor = CURSOR_SOURCES.get(out_name)
+    if cursor and cursor.is_file():
         SRC_DIR.mkdir(parents=True, exist_ok=True)
-        import shutil
-
         shutil.copy2(cursor, local)
         return local
-    return cursor
+    if local.is_file():
+        return local
+    if cursor:
+        return cursor
+    return local
 
 
 def process_file(src: Path, dest: Path) -> None:
@@ -256,7 +287,7 @@ def process_file(src: Path, dest: Path) -> None:
     out = extract_display(bgr)
     dest.parent.mkdir(parents=True, exist_ok=True)
     cv2.imwrite(str(dest), out, [cv2.IMWRITE_PNG_COMPRESSION, 9])
-    print(f"{src.name} → {dest}  (straightened, circular alpha)")
+    print(f"{src.name} → {dest}  (circular crop, transparent outside)")
 
 
 def main() -> int:
@@ -273,8 +304,8 @@ def main() -> int:
 
     for out_name, src in pairs.items():
         if not src.is_file():
-            print(f"Missing {src}", file=sys.stderr)
-            return 1
+            print(f"Skip {out_name}: missing {src}", file=sys.stderr)
+            continue
         process_file(src, OUT / out_name)
 
     print(f"\nSaved to {OUT}/")

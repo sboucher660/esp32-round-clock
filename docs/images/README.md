@@ -1,23 +1,14 @@
 # Documentation screenshots
 
-**240×240** crops from your phone photos (`assets/doc-photos/`).  
-Circular display only — **transparent outside the dial** (no square matte in the PNG).
+240×240 PNGs cropped to the round display only. Corners are **transparent** (no desk, cable, or bezel).
 
-## Regenerate (recommended)
+## Regenerate
 
 ```bash
 .venv/bin/python scripts/process_device_photos.py
 ```
 
-Keeps real TFT fonts, spacing, and colours from the device.
-
-## Optional: synthetic renders
-
-```bash
-.venv/bin/python scripts/render_doc_screenshots.py
-```
-
-Approximates firmware layout when you have no photos; will not match the camera shot pixel-for-pixel.
+Drop new phone photos into `assets/doc-photos/` as `*-source.png`, or they are copied automatically from the latest Cursor chat uploads.
 
 | File | Screen |
 |------|--------|
@@ -25,4 +16,5 @@ Approximates firmware layout when you have no photos; will not match the camera 
 | `weather.png` | Weather |
 | `spotify.png` | Spotify |
 | `network.png` | Network |
-| `notification-alert.png` | Mac notification overlay |
+| `notification-alert.png` | Mac notification |
+| `boot-splash.png` | Boot splash |

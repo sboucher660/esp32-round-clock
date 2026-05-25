@@ -20,18 +20,19 @@ Firmware and Mac helpers for the **ESP32-C3 1.28" round GC9A01** board (ESP32-24
 ## Screenshots
 
 <p align="center">
-  <img src="docs/images/clock.png" width="160" alt="Clock" />
-  <img src="docs/images/weather.png" width="160" alt="Weather" />
-  <img src="docs/images/spotify.png" width="160" alt="Spotify" />
+  <img src="docs/images/clock.png" width="148" alt="Clock" />
+  <img src="docs/images/weather.png" width="148" alt="Weather" />
+  <img src="docs/images/spotify.png" width="148" alt="Spotify" />
 </p>
 <p align="center">
-  <img src="docs/images/network.png" width="160" alt="Network" />
-  <img src="docs/images/notification-alert.png" width="160" alt="Notification alert" />
+  <img src="docs/images/network.png" width="148" alt="Network" />
+  <img src="docs/images/notification-alert.png" width="148" alt="Notification" />
+  <img src="docs/images/boot-splash.png" width="148" alt="Boot splash" />
 </p>
 
-<p align="center"><em>Clock · Weather · Spotify · Network · Mac notification (15s overlay)</em></p>
+<p align="center"><em>Circular crops from your photos — transparent outside the dial</em></p>
 
-More detail: [docs/images/](docs/images/) · regenerate from your photos with <code>scripts/process_device_photos.py</code>
+Regenerate: <code>.venv/bin/python scripts/process_device_photos.py</code> (sources in <code>assets/doc-photos/</code>)
 
 ## Quick start
 

@@ -10,6 +10,7 @@
 #include <TFT_eSPI.h>
 
 #include "config.h"
+#include "notifications.h"
 
 #if __has_include("secrets.h")
 #include "secrets.h"
@@ -40,14 +41,6 @@ static const uint16_t COL_RING = 0x4A69;
 static const uint16_t COL_ACCENT = 0x5D1F;
 static const uint16_t COL_TEXT = TFT_WHITE;
 static const uint16_t COL_DIM = 0x8C71;
-
-enum Screen : uint8_t {
-  SCREEN_CLOCK = 0,
-  SCREEN_WEATHER = 1,
-  SCREEN_SPOTIFY = 2,
-  SCREEN_NETWORK = 3,
-  SCREEN_COUNT = 4
-};
 
 struct MarqueeState {
   int scrollPx = 0;
@@ -370,6 +363,36 @@ void setupPageHttp() {
     pageServer.send(200, "application/json", body);
   });
 
+  pageServer.on("/notify", HTTP_POST, []() {
+    if (!pageServer.hasArg("plain")) {
+      pageServer.send(400, "text/plain", "POST JSON: app, title, body\n");
+      return;
+    }
+
+    StaticJsonDocument<512> doc;
+    const DeserializationError err = deserializeJson(doc, pageServer.arg("plain"));
+    if (err) {
+      pageServer.send(400, "text/plain", "bad json\n");
+      return;
+    }
+
+    const char *app = doc["app"] | "Notification";
+    const char *title = doc["title"] | "";
+    const char *body = doc["body"] | doc["message"] | doc["subtitle"] | "";
+
+    notificationShow(app, title, body);
+    pageServer.send(200, "text/plain", "ok\n");
+  });
+
+  pageServer.on("/notify", HTTP_GET, []() {
+    const String app = pageServer.hasArg("app") ? pageServer.arg("app") : "Notification";
+    const String title = pageServer.hasArg("title") ? pageServer.arg("title") : "";
+    const String body = pageServer.hasArg("body") ? pageServer.arg("body") : pageServer.arg("message");
+
+    notificationShow(app.c_str(), title.c_str(), body.c_str());
+    pageServer.send(200, "text/plain", "ok\n");
+  });
+
   pageServer.begin();
   if (MDNS.begin(MDNS_HOSTNAME)) {
     MDNS.addService("http", "tcp", PAGE_HTTP_PORT);
@@ -500,14 +523,10 @@ void drawAppleLogoFallback(int cx, int cy) {
 }
 
 void drawBootSplash() {
-  tft.fillScreen(COL_EINK_PAPER);
-
 #if HAS_BOOT_LOGO_IMAGE
-  const int x = (TFT_WIDTH - APPLE_LOGO_WIDTH) / 2;
-  const int y = (TFT_HEIGHT - APPLE_LOGO_HEIGHT) / 2;
-
+  // Full-frame bitmap: paper background + centered logo (see scripts/png_to_logo_h.py)
   tft.setSwapBytes(true);
-  tft.pushImage(x, y, APPLE_LOGO_WIDTH, APPLE_LOGO_HEIGHT, apple_logo);
+  tft.pushImage(0, 0, APPLE_LOGO_WIDTH, APPLE_LOGO_HEIGHT, apple_logo);
   tft.setSwapBytes(false);
 #else
   tft.fillScreen(COL_EINK_PAPER);
@@ -1330,6 +1349,11 @@ void connectWiFi() {
 }
 
 void drawCurrentScreen(const struct tm &timeinfo) {
+  if (notificationIsActive()) {
+    drawNotificationScreen();
+    return;
+  }
+
   invalidateAllScreens();
   switch (currentScreen) {
     case SCREEN_CLOCK:
@@ -1374,16 +1398,9 @@ void setup() {
 }
 
 void loop() {
-  if (pollSerialCommands()) {
-    struct tm ti {};
-    if (getLocalTime(&ti)) {
-      timeReady = true;
-    }
-    drawCurrentScreen(ti);
-  }
-
   maintainWiFi();
   handlePageHttp();
+  notificationTick();
 
   struct tm timeinfo {};
   if (getLocalTime(&timeinfo)) {
@@ -1392,7 +1409,11 @@ void loop() {
 
   bool changedPage = false;
   if (buttonPressed()) {
-    cycleScreen();
+    if (notificationIsActive()) {
+      notificationDismiss();
+    } else {
+      cycleScreen();
+    }
     changedPage = true;
   }
   if (pollSerialCommands()) {
@@ -1400,7 +1421,8 @@ void loop() {
   }
 
 #if AUTO_ROTATE_MS > 0
-  if (!changedPage && (millis() - lastAutoRotateMs) >= AUTO_ROTATE_MS) {
+  if (!changedPage && !notificationIsActive() &&
+      (millis() - lastAutoRotateMs) >= AUTO_ROTATE_MS) {
     lastAutoRotateMs = millis();
     cycleScreen();
     changedPage = true;
@@ -1442,30 +1464,34 @@ void loop() {
   }
 #endif
 
-  switch (currentScreen) {
-    case SCREEN_CLOCK:
-      if (timeReady) {
-        drawClockScreen(timeinfo);
-        drawClockSeconds(timeinfo);
-      } else if ((millis() - lastClockDraw) > 1000) {
-        lastClockDraw = millis();
-        drawBootSplash();
-      }
-      break;
-    case SCREEN_WEATHER:
-      drawWeatherScreen();
-      break;
-    case SCREEN_SPOTIFY:
-      drawSpotifyScreen();
-      if (spotify.hasTrack && spotify.valid) {
-        drawSpotifyMarquees();
-      }
-      break;
-    case SCREEN_NETWORK:
-      drawNetworkScreen();
-      break;
-    default:
-      break;
+  if (notificationIsActive()) {
+    drawNotificationScreen();
+  } else {
+    switch (currentScreen) {
+      case SCREEN_CLOCK:
+        if (timeReady) {
+          drawClockScreen(timeinfo);
+          drawClockSeconds(timeinfo);
+        } else if ((millis() - lastClockDraw) > 1000) {
+          lastClockDraw = millis();
+          drawBootSplash();
+        }
+        break;
+      case SCREEN_WEATHER:
+        drawWeatherScreen();
+        break;
+      case SCREEN_SPOTIFY:
+        drawSpotifyScreen();
+        if (spotify.hasTrack && spotify.valid) {
+          drawSpotifyMarquees();
+        }
+        break;
+      case SCREEN_NETWORK:
+        drawNetworkScreen();
+        break;
+      default:
+        break;
+    }
   }
 
   delay(20);

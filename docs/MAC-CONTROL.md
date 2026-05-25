@@ -12,6 +12,8 @@ Nothing is installed in `$HOME` root. This follows normal macOS app layout (like
 
 The daemon keeps USB serial **open** so each hotkey is instant (~0.1s). Karabiner runs the shell wrappers.
 
+Live Mac notifications (15s alert overlay, then return to prior page) use Wi-Fi, not USB. See [NOTIFICATIONS.md](NOTIFICATIONS.md).
+
 ## Commands
 
 ```bash

@@ -12,6 +12,9 @@
 | `send_page.py` | Python backend (called by shell wrappers) |
 | `usb_daemon.py` | Persistent USB serial daemon |
 | `esp_port.py` | Auto-detect `/dev/cu.usbmodem*` |
+| `install_notification_forward.sh` | Mac → clock alerts (Wi-Fi; optional log watcher) |
+| `notification_forward.py` | POST `/notify`; `test` / `send` / `watch` |
+| `forward-notification.sh` | Shell hook for Apple Shortcuts automations |
 | `karabiner-esp32-clock.json` | Karabiner complex modifications (import) |
 | `karabiner-*.zsh` | Optional wrappers for Karabiner `shell_command` |
 | `com.esp32-round-clock.usb-daemon.plist` | LaunchAgent template |

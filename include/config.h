@@ -1,6 +1,16 @@
 #pragma once
 
+#include <stdint.h>
+
 // Copy include/secrets.h.example to include/secrets.h and fill in Wi-Fi + location.
+
+enum Screen : uint8_t {
+  SCREEN_CLOCK = 0,
+  SCREEN_WEATHER = 1,
+  SCREEN_SPOTIFY = 2,
+  SCREEN_NETWORK = 3,
+  SCREEN_COUNT = 4
+};
 
 // NTP (POSIX TZ string). Examples:
 //   US Eastern:  "EST5EDT,M3.2.0,M11.1.0"
@@ -46,3 +56,6 @@
 // HTTP page control (Mac Karabiner / send-page.sh over Wi-Fi)
 #define PAGE_HTTP_PORT 8080
 #define MDNS_HOSTNAME "esp32-clock"
+
+// Mac notification overlay duration (milliseconds)
+#define NOTIFICATION_DISPLAY_MS 15000UL

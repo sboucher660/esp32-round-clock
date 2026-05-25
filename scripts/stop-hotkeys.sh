@@ -2,8 +2,11 @@
 # Stop background hotkey service and free the USB serial port.
 set -euo pipefail
 
-launchctl bootout "gui/$(id -u)" \
+UID_NUM="$(id -u)"
+launchctl bootout "gui/$UID_NUM" \
   "$HOME/Library/LaunchAgents/com.esp32-round-clock.pages" 2>/dev/null || true
+launchctl bootout "gui/$UID_NUM" \
+  "$HOME/Library/LaunchAgents/com.esp32-round-clock.usb-daemon.plist" 2>/dev/null || true
 
 # Kill hung send-page / hotkey Python holding /dev/cu.usbmodem*
 for port in /dev/cu.usbmodem*; do
@@ -30,5 +33,5 @@ rm -f "$HOME/Library/Application Support/esp32-round-clock/bridge.sock" \
       "$HOME/Library/Application Support/esp32-round-clock/usb-daemon.pid" 2>/dev/null || true
 
 sleep 0.5
-echo "USB port should be free. Test:"
-echo "  ~/Library/Application\\ Support/esp32-round-clock/send-page.sh next"
+echo "USB daemon stopped (LaunchAgent unloaded — safe for pio upload)."
+echo "After flash: cd ~/Documents/esp32-round-clock && ./scripts/install_usb_daemon.sh"

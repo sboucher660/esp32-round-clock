@@ -48,6 +48,15 @@ Import `scripts/karabiner-esp32-clock.json` in Karabiner. Default bindings:
 
 Details: [docs/MAC-CONTROL.md](docs/MAC-CONTROL.md) · [scripts/README.md](scripts/README.md)
 
+### Live Mac notifications
+
+When a Mac alert arrives (Teams, Outlook, Messages, calls, etc.), the clock shows it for **15 seconds**, then returns to the page it was on. Requires Wi-Fi on the clock.
+
+```bash
+./scripts/install_notification_forward.sh   # experimental log watcher
+# Best: Apple Shortcuts — see docs/NOTIFICATIONS.md
+```
+
 ## Configuration
 
 | File | Purpose |

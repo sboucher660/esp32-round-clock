@@ -2,10 +2,11 @@
 """Convert your boot splash PNG/JPG to TFT_eSPI RGB565 header (include/apple_logo.h).
 
 The logo artwork lives in assets/ (e.g. apple_logo.png — user-provided image).
-This script only converts pixels to C; it does not create the design.
+Output is a full round-display frame (240×240): e-ink paper background with the
+logo scaled and centered — no visible square patch.
 
 Usage:
-  .venv/bin/python scripts/png_to_logo_h.py assets/apple_logo.png --size 240
+  .venv/bin/python scripts/png_to_logo_h.py assets/apple_logo.png
 """
 
 import argparse
@@ -66,40 +67,37 @@ def map_pixel(r, g, b):
     return COL_EINK_INK
 
 
-def content_center(img, luma_threshold=36):
-    gray = img.convert("L")
-    pixels = gray.load()
-    w, h = gray.size
-    xs = []
-    ys = []
-    for y in range(h):
-        for x in range(w):
-            if pixels[x, y] > luma_threshold:
-                xs.append(x)
-                ys.append(y)
-    if not xs:
-        return w // 2, h // 2
-    return sum(xs) // len(xs), sum(ys) // len(ys)
+def fit_logo_on_canvas(src: Image.Image, size: int, max_scale: float) -> tuple[Image.Image, Image.Image]:
+    """Full size×size frame filled with e-ink paper; logo centered, aspect preserved."""
+    paper = rgb565_to_rgb(COL_EINK_PAPER)
+    canvas = Image.new("RGBA", (size, size), paper + (255,))
+    mask = Image.new("L", (size, size), 0)
 
+    logo = src.convert("RGBA")
+    w, h = logo.size
+    max_side = max(8, int(size * max_scale))
+    scale = min(max_side / w, max_side / h)
+    nw = max(1, int(w * scale))
+    nh = max(1, int(h * scale))
+    scaled = logo.resize((nw, nh), Image.Resampling.LANCZOS)
 
-def crop_zoom_centered(img, size, zoom):
-    w, h = img.size
-    cx, cy = content_center(img)
-    base_side = min(w, h)
-    crop_side = max(32, int(base_side / zoom))
-    left = cx - crop_side // 2
-    top = cy - crop_side // 2
-    left = max(0, min(left, w - crop_side))
-    top = max(0, min(top, h - crop_side))
-    cropped = img.crop((left, top, left + crop_side, top + crop_side))
-    return cropped.resize((size, size), Image.Resampling.LANCZOS)
+    ox = (size - nw) // 2
+    oy = (size - nh) // 2
+    canvas.paste(scaled, (ox, oy), scaled)
+    mask.paste(scaled.split()[3], (ox, oy))
+    return canvas.convert("RGB"), mask
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("image")
-    parser.add_argument("--size", type=int, default=240, help="Output width/height (square)")
-    parser.add_argument("--zoom", type=float, default=1.32, help=">1 zooms in on logo")
+    parser.add_argument("--size", type=int, default=240, help="Output frame size (square, full display)")
+    parser.add_argument(
+        "--max-scale",
+        type=float,
+        default=0.68,
+        help="Logo max fraction of frame (0.68 ≈ centered, not blown up)",
+    )
     args = parser.parse_args()
 
     src = Path(args.image)
@@ -108,18 +106,25 @@ def main():
         sys.exit(1)
 
     size = args.size
-    img = Image.open(src).convert("RGB")
-    img = crop_zoom_centered(img, size, args.zoom)
+    img = Image.open(src)
+    img, logo_mask = fit_logo_on_canvas(img, size, args.max_scale)
 
     w, h = img.size
     pixels = img.load()
-    data = [map_pixel(*pixels[x, y]) for y in range(h) for x in range(w)]
+    mask_px = logo_mask.load()
+    data = []
+    for y in range(h):
+        for x in range(w):
+            if mask_px[x, y] < 32:
+                data.append(COL_EINK_PAPER)
+            else:
+                data.append(map_pixel(*pixels[x, y]))
 
     lines = [
         "#pragma once",
         "#include <pgmspace.h>",
         "",
-        f"// Generated from {src.name} ({w}x{h} RGB565, e-ink palette)",
+        f"// Generated from {src.name} ({w}x{h} RGB565, e-ink palette, centered on paper)",
         f"#define APPLE_LOGO_WIDTH {w}",
         f"#define APPLE_LOGO_HEIGHT {h}",
         "",
@@ -134,7 +139,7 @@ def main():
     lines.append("")
 
     OUT.write_text("\n".join(lines))
-    print(f"Wrote {OUT} ({w}x{h})")
+    print(f"Wrote {OUT} ({w}x{h}, max_scale={args.max_scale})")
 
 
 if __name__ == "__main__":

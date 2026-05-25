@@ -20,7 +20,10 @@ ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "docs" / "images"
 SRC_DIR = ROOT / "assets" / "doc-photos"
 OUT_SIZE = 240
-DISPLAY_RADIUS_FRAC = 0.46  # fraction of output side for active circle
+DISPLAY_RADIUS = 110
+TEXT_THRESHOLD = 188
+SKEW_ANGLE_LIMIT = 35.0
+COARSE_SKEW_LIMIT = 12.0
 
 DEFAULT_INPUTS: dict[str, Path] = {
     "clock.png": SRC_DIR / "clock-source.png",
@@ -66,7 +69,6 @@ def order_quad(pts: np.ndarray) -> np.ndarray:
 
 
 def display_mask(bgr: np.ndarray) -> np.ndarray:
-    """Mask of the lit round panel (blue-gray e-ink background in photos)."""
     hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
     mask = cv2.inRange(hsv, (78, 25, 90), (115, 255, 255))
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((21, 21), np.uint8))
@@ -107,37 +109,91 @@ def find_display_circle(bgr: np.ndarray) -> tuple[int, int, int]:
         return int(cx), int(cy), int(radius * 0.96)
 
     h, w = bgr.shape[:2]
-    return w // 2, h // 2, int(min(h, w) * DISPLAY_RADIUS_FRAC)
+    return w // 2, h // 2, int(min(h, w) * 0.46)
 
 
-def text_mask(bgr: np.ndarray, disp_mask: np.ndarray) -> np.ndarray:
+def text_mask(bgr: np.ndarray, panel_mask: np.ndarray) -> np.ndarray:
     gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
-    _, bright = cv2.threshold(gray, 175, 255, cv2.THRESH_BINARY)
-    return cv2.bitwise_and(bright, disp_mask)
+    _, bright = cv2.threshold(gray, TEXT_THRESHOLD, 255, cv2.THRESH_BINARY)
+    tm = cv2.bitwise_and(bright, panel_mask)
+    return cv2.morphologyEx(tm, cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))
 
 
-def rotation_search(mask: np.ndarray, center: tuple[float, float]) -> float:
-    h, w = mask.shape[:2]
-    best_angle = 0.0
-    best_height = 1e9
+def skew_detection_mask(text: np.ndarray) -> np.ndarray:
+    """Ignore page dots and top bezel for angle detection."""
+    h, w = text.shape
+    m = text.copy()
+    m[int(h * 0.82) :, :] = 0
+    m[: int(h * 0.06), :] = 0
+    return m
 
-    for angle in np.linspace(-30, 30, 121):
-        m = cv2.getRotationMatrix2D(center, float(angle), 1.0)
-        rot = cv2.warpAffine(mask, m, (w, h), flags=cv2.INTER_NEAREST, borderValue=0)
-        pts = cv2.findNonZero(rot)
-        if pts is None or len(pts) < 60:
+
+def hough_skew_angle(mask: np.ndarray) -> float | None:
+    edges = cv2.Canny(mask, 50, 150)
+    lines = cv2.HoughLinesP(edges, 1, np.pi / 180, 18, minLineLength=22, maxLineGap=12)
+    if lines is None:
+        return None
+
+    angles: list[float] = []
+    for line in lines:
+        x1, y1, x2, y2 = line[0]
+        dx, dy = x2 - x1, y2 - y1
+        if abs(dx) < 12:
             continue
-        rect = cv2.minAreaRect(pts)
-        height = min(rect[1])
-        if height < best_height:
-            best_height = height
+        ang = float(np.degrees(np.arctan2(dy, dx)))
+        while ang > 45:
+            ang -= 90.0
+        while ang < -45:
+            ang += 90.0
+        if abs(ang) <= 25:
+            angles.append(ang)
+
+    if not angles:
+        return None
+    return float(np.median(angles))
+
+
+def measure_skew_on_bgr(bgr: np.ndarray) -> float | None:
+    panel = display_mask(bgr)
+    text = skew_detection_mask(text_mask(bgr, panel))
+    if text.sum() < 300:
+        return None
+    return hough_skew_angle(text)
+
+
+def find_straighten_angle(
+    bgr: np.ndarray,
+    center: tuple[float, float],
+    limit: float = SKEW_ANGLE_LIMIT,
+    steps: int = 161,
+) -> float:
+    """Pick rotation that minimizes |hough skew| on the rotated frame."""
+    if display_mask(bgr).sum() < 400:
+        return 0.0
+
+    initial = measure_skew_on_bgr(bgr)
+    best_angle = 0.0
+    best_residual = abs(initial) if initial is not None else 90.0
+
+    for angle in np.linspace(-limit, limit, steps):
+        rotated = rotate_bgr(bgr, center, float(angle))
+        ha = measure_skew_on_bgr(rotated)
+        if ha is None:
+            continue
+        residual = abs(ha)
+        if residual < best_residual - 0.05 or (
+            residual <= best_residual + 0.05 and abs(float(angle)) < abs(best_angle)
+        ):
+            best_residual = residual
             best_angle = float(angle)
 
+    if best_residual > 1.0:
+        return 0.0
     return best_angle
 
 
-def rotate_about(bgr: np.ndarray, center: tuple[float, float], angle: float) -> np.ndarray:
-    if abs(angle) < 0.25:
+def rotate_bgr(bgr: np.ndarray, center: tuple[float, float], angle: float) -> np.ndarray:
+    if abs(angle) < 0.15:
         return bgr
     h, w = bgr.shape[:2]
     m = cv2.getRotationMatrix2D(center, angle, 1.0)
@@ -153,54 +209,30 @@ def apply_circle_alpha(bgra: np.ndarray, rcx: int, rcy: int, rr: int) -> np.ndar
     return out
 
 
-def final_deskew(bgra: np.ndarray, rcx: int, rcy: int, rr: int) -> np.ndarray:
-    rgb = bgra[:, :, :3]
-    panel = np.zeros((OUT_SIZE, OUT_SIZE), dtype=np.uint8)
-    cv2.circle(panel, (rcx, rcy), rr, 255, -1)
-    tmask = text_mask(rgb, panel)
-    angle = rotation_search(tmask, (OUT_SIZE / 2, OUT_SIZE / 2))
-    if abs(angle) < 0.2:
-        return bgra
-    m = cv2.getRotationMatrix2D((OUT_SIZE / 2, OUT_SIZE / 2), angle, 1.0)
-    rotated = cv2.warpAffine(
-        bgra,
-        m,
-        (OUT_SIZE, OUT_SIZE),
-        flags=cv2.INTER_LANCZOS4,
-        borderMode=cv2.BORDER_CONSTANT,
-        borderValue=(0, 0, 0, 0),
-    )
-    return apply_circle_alpha(rotated, rcx, rcy, rr)
-
-
 def extract_display(bgr: np.ndarray, out_size: int = OUT_SIZE) -> np.ndarray:
     bgr = warp_display_frontal(bgr)
 
     cx, cy, r = find_display_circle(bgr)
-    center = (float(cx), float(cy))
-    disp = display_mask(bgr)
-    tmask = text_mask(bgr, disp)
-    angle = rotation_search(tmask, center)
-    bgr = rotate_about(bgr, center, angle)
-
     h, w = bgr.shape[:2]
     x1, x2 = max(0, cx - r), min(w, cx + r)
     y1, y2 = max(0, cy - r), min(h, cy + r)
     patch = bgr[y1:y2, x1:x2].copy()
     patch = cv2.resize(patch, (out_size, out_size), interpolation=cv2.INTER_LANCZOS4)
 
-    mid = (out_size / 2, out_size / 2)
-    fine = rotation_search(text_mask(patch, display_mask(patch)), mid)
-    patch = rotate_about(patch, mid, fine)
+    center = (out_size / 2, out_size / 2)
+    angle = find_straighten_angle(patch, center, limit=COARSE_SKEW_LIMIT, steps=161)
+    if abs(angle) >= 0.15:
+        patch = rotate_bgr(patch, center, angle)
 
-    rcx, rcy, rr = find_display_circle(patch)
-    # Trim outer bezel; keep only the lit panel
-    rr = max(10, int(rr * 0.92))
+    # Refine: rotate by remaining line tilt (fixes false ±mirror Hough minima)
+    for _ in range(3):
+        ha = measure_skew_on_bgr(patch)
+        if ha is None or abs(ha) < 0.4:
+            break
+        patch = rotate_bgr(patch, center, ha)
 
-    sharp = cv2.addWeighted(patch, 1.15, cv2.GaussianBlur(patch, (0, 0), 1.2), -0.15, 0)
-    bgra = cv2.cvtColor(sharp, cv2.COLOR_BGR2BGRA)
-    bgra = apply_circle_alpha(bgra, rcx, rcy, rr)
-    return final_deskew(bgra, rcx, rcy, rr)
+    bgra = cv2.cvtColor(patch, cv2.COLOR_BGR2BGRA)
+    return apply_circle_alpha(bgra, OUT_SIZE // 2, OUT_SIZE // 2, DISPLAY_RADIUS)
 
 
 def resolve_source(out_name: str) -> Path:
@@ -224,7 +256,7 @@ def process_file(src: Path, dest: Path) -> None:
     out = extract_display(bgr)
     dest.parent.mkdir(parents=True, exist_ok=True)
     cv2.imwrite(str(dest), out, [cv2.IMWRITE_PNG_COMPRESSION, 9])
-    print(f"{src.name} → {dest}  (circular, transparent outside)")
+    print(f"{src.name} → {dest}  (straightened, circular alpha)")
 
 
 def main() -> int:

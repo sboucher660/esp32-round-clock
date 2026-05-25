@@ -1,14 +1,28 @@
 # Documentation screenshots
 
-PNG previews of each screen (240×240, e-ink palette). Shown in the [README](../../README.md) and docs.
+Real device photos (processed to 240×240: straight, cropped to the round display, background removed). Shown in the [README](../../README.md) and docs.
 
-## Regenerate
+## Regenerate from your photos
+
+1. Save phone photos anywhere, or use the paths baked into `process_device_photos.py`.
+2. Run:
 
 ```bash
-.venv/bin/python scripts/render_doc_screenshots.py
+.venv/bin/pip install opencv-python-headless numpy pillow
+.venv/bin/python scripts/process_device_photos.py
 ```
 
-Uses your `assets/apple_logo.png` on the boot splash frame. Layout matches firmware typography and colors; replace any file here with a **photo of your clock** if you prefer real device shots (keep the same filenames).
+Optional: pass files in order `clock weather spotify network notification-alert`:
+
+```bash
+.venv/bin/python scripts/process_device_photos.py photo1.jpg photo2.jpg ...
+```
+
+## Boot splash only (no photo yet)
+
+```bash
+.venv/bin/python scripts/render_doc_screenshots.py   # boot-splash.png from assets/apple_logo.png
+```
 
 | File | Screen |
 |------|--------|

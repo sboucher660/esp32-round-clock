@@ -19,18 +19,44 @@ Firmware and Mac helpers for the **ESP32-C3 1.28" round GC9A01** board (ESP32-24
 
 ## Screenshots
 
-<p align="center">
-  <img src="docs/images/clock.png" width="148" alt="Clock" />
-  <img src="docs/images/weather.png" width="148" alt="Weather" />
-  <img src="docs/images/spotify.png" width="148" alt="Spotify" />
-</p>
-<p align="center">
-  <img src="docs/images/network.png" width="148" alt="Network" />
-  <img src="docs/images/notification-alert.png" width="148" alt="Notification" />
-  <img src="docs/images/boot-splash.png" width="148" alt="Boot splash" />
-</p>
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <img src="docs/images/clock.png" width="148" alt="Clock" /><br />
+      <b>Clock</b><br />
+      NTP time, day, and date
+    </td>
+    <td align="center" width="33%">
+      <img src="docs/images/weather.png" width="148" alt="Weather" /><br />
+      <b>Weather</b><br />
+      Open-Meteo temp, conditions, wind
+    </td>
+    <td align="center" width="33%">
+      <img src="docs/images/spotify.png" width="148" alt="Spotify" /><br />
+      <b>Spotify</b><br />
+      Now playing (optional)
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="33%">
+      <img src="docs/images/network.png" width="148" alt="Network" /><br />
+      <b>Network</b><br />
+      Wi-Fi RSSI, LAN and public IP
+    </td>
+    <td align="center" width="33%">
+      <img src="docs/images/notification-alert.png" width="148" alt="Notification" /><br />
+      <b>Notification</b><br />
+      Mac alerts (Teams, Outlook, etc.)
+    </td>
+    <td align="center" width="33%">
+      <img src="docs/images/boot-splash.png" width="148" alt="Boot splash" /><br />
+      <b>Boot splash</b><br />
+      Custom logo on startup
+    </td>
+  </tr>
+</table>
 
-<p align="center"><em>Circular crops from your photos — transparent outside the dial</em></p>
+<p align="center"><em>Circular crops from device photos — transparent outside the dial</em></p>
 
 Regenerate: <code>.venv/bin/python scripts/process_device_photos.py</code> (sources in <code>assets/doc-photos/</code>)
 

@@ -30,15 +30,17 @@ Edit `include/config.h` if needed:
 - `WEATHER_LAT` / `WEATHER_LON`
 - `DISPLAY_ROTATION` — default orientation (0–3)
 
-### Optional boot splash (Apple logo)
+### Boot splash (your Apple logo image)
+
+The repo includes **your boot splash artwork** in `assets/apple_logo.png` (and `.jpg`). Firmware uses `include/apple_logo.h`, which is pre-generated from that file — no extra step for a normal build.
+
+To **change** the splash, replace the image in `assets/`, then:
 
 ```bash
-python3 -m venv .venv
-.venv/bin/pip install pillow
-.venv/bin/python scripts/png_to_logo_h.py assets/apple_logo.jpg --size 240
+python3 -m venv .venv && .venv/bin/pip install pillow
+.venv/bin/python scripts/png_to_logo_h.py assets/apple_logo.png --size 240
+pio run -e esp32c3_round -t upload
 ```
-
-Generates `include/apple_logo.h` (gitignored).
 
 ## 2. Build and flash
 

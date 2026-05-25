@@ -6,9 +6,8 @@ __pycache__/
 .DS_Store
 .vscode/.browse*
 
-# Local secrets and generated assets
+# Local secrets (never commit)
 include/secrets.h
-include/apple_logo.h
 
 # macOS install copies (lives in ~/Library/Application Support/)
 # not tracked in this repo

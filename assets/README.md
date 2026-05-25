@@ -1,15 +1,23 @@
-# Boot logo image
+# Boot splash image
 
-Drop your boot splash image here (PNG or JPG), then run:
+The boot screen uses **your provided Apple logo artwork** — not a generated placeholder.
+
+| File | Role |
+|------|------|
+| `apple_logo.png` / `apple_logo.jpg` | **Source image** (what you supplied) |
+| `include/apple_logo.h` | RGB565 data for TFT_eSPI (built from that image, committed in repo) |
+
+Firmware draws this full-screen (240×240, e-ink palette) on every boot.
+
+## Replace the artwork
+
+1. Put your new PNG or JPG here (e.g. overwrite `apple_logo.png`).
+2. Regenerate the header and reflash:
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install pillow   # once
-.venv/bin/python scripts/png_to_logo_h.py assets/apple_logo.jpg --size 240
-pio run -t upload
+.venv/bin/pip install pillow   # once, if needed
+.venv/bin/python scripts/png_to_logo_h.py assets/apple_logo.png --size 240
+pio run -e esp32c3_round -t upload
 ```
 
-- Full-screen 240×240 splash (center-cropped square from your image)
-- Colors are mapped to the e-ink palette used on the clock screens
-- Output: `include/apple_logo.h` (gitignored — generated locally)
-
-You can also attach the image in Cursor chat and ask the agent to convert it for you.
+`scripts/png_to_logo_h.py` only **converts** your image to C — it does not create the logo design.

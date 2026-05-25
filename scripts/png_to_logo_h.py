@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Convert a PNG/JPG boot splash to TFT_eSPI RGB565 header (include/apple_logo.h).
+"""Convert your boot splash PNG/JPG to TFT_eSPI RGB565 header (include/apple_logo.h).
+
+The logo artwork lives in assets/ (e.g. apple_logo.png — user-provided image).
+This script only converts pixels to C; it does not create the design.
 
 Usage:
-  python3 scripts/png_to_logo_h.py path/to/image.png
-  python3 scripts/png_to_logo_h.py path/to/image.jpg --size 240
+  .venv/bin/python scripts/png_to_logo_h.py assets/apple_logo.png --size 240
 """
 
 import argparse

@@ -14,6 +14,7 @@ Firmware and Mac helpers for the **ESP32-C3 1.28" round GC9A01** board (ESP32-24
 - **BOOT button (GPIO 9):** tap to change page (do not hold — flash mode)
 - **Mac hotkeys (optional):** instant USB control via Karabiner + LaunchAgent daemon
 - **Display rotation:** 90° steps, saved on device
+- **Boot splash:** your Apple logo image ([assets/](assets/))
 - **3D case:** Mini Mac–style enclosure ([case/README.md](case/README.md))
 
 ## Quick start

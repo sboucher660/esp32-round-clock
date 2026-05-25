@@ -6,7 +6,7 @@
 |--------|---------|
 | `install_usb_daemon.sh` | **Install** — USB daemon + `ESP32 Clock.app` (⌘⇧ arrows) |
 | `stop-hotkeys.sh` | Stop daemon + hotkeys before `pio upload` |
-| `cleanup_mac_install.sh` | Remove legacy files before reinstall |
+| `cleanup_mac_install.sh` | Reset Mac install before reinstall |
 | `hotkey_listener.py` | Global hotkeys → USB daemon |
 | `send-page.sh` / `send-rotate.sh` | Shell wrappers |
 | `send_page.py` / `usb_daemon.py` / `esp_port.py` | Python backend |

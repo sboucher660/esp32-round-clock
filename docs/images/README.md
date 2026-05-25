@@ -18,15 +18,8 @@ Optional: pass files in order `clock weather spotify network notification-alert`
 .venv/bin/python scripts/process_device_photos.py photo1.jpg photo2.jpg ...
 ```
 
-## Boot splash only (no photo yet)
-
-```bash
-.venv/bin/python scripts/render_doc_screenshots.py   # boot-splash.png from assets/apple_logo.png
-```
-
 | File | Screen |
 |------|--------|
-| `boot-splash.png` | Boot logo |
 | `clock.png` | Clock |
 | `weather.png` | Weather |
 | `spotify.png` | Spotify |

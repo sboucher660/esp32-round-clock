@@ -4,12 +4,16 @@
 
 | Piece | Location |
 |--------|-----------|
-| **USB daemon** (serial at login) | `~/Library/LaunchAgents/com.esp32-round-clock.usb-daemon.plist` |
-| **Hotkeys** (global shortcuts) | `~/Applications/ESP32 Clock.app` + `com.esp32-round-clock.hotkeys.plist` |
-| **Scripts + venv** | `~/Library/Application Support/esp32-round-clock/` |
-| **Install** | `./scripts/install_usb_daemon.sh` |
+| **USB daemon** | `~/Library/LaunchAgents/com.esp32-round-clock.usb-daemon.plist` |
+| **Hotkeys** | `~/Applications/ESP32 Clock.app` + `com.esp32-round-clock.hotkeys.plist` |
+| **Scripts** | `~/Library/Application Support/esp32-round-clock/` |
 
-No Karabiner or Shortcuts setup required. One install registers:
+Install once:
+
+```bash
+cd ~/Documents/esp32-round-clock
+./scripts/install_usb_daemon.sh
+```
 
 | Shortcut | Action |
 |----------|--------|
@@ -18,33 +22,26 @@ No Karabiner or Shortcuts setup required. One install registers:
 | ⌘⇧↑ | Rotate display right |
 | ⌘⇧↓ | Rotate display left |
 
-The USB daemon keeps serial **open** so each keypress is instant (~0.1s). The hotkey app sends commands over a local Unix socket.
+The USB daemon keeps serial **open** for instant commands (~0.1s). The hotkey app sends commands over a local Unix socket.
 
-Live Mac notifications (15s alert overlay) use Wi-Fi, not USB. See [NOTIFICATIONS.md](NOTIFICATIONS.md).
+Mac notification overlays use Wi-Fi — see [NOTIFICATIONS.md](NOTIFICATIONS.md).
 
-## Install
-
-```bash
-cd ~/Documents/esp32-round-clock
-./scripts/install_usb_daemon.sh
-```
-
-Then **once per Mac**:
+## One-time: Accessibility
 
 1. **System Settings → Privacy & Security → Accessibility**
 2. Enable **ESP32 Clock**
-3. Run: `open -a 'ESP32 Clock'`
+3. `open -a 'ESP32 Clock'`
 
-Test keys (15s log):
+Test (15s key log):
 
 ```bash
 ~/Library/Application\ Support/esp32-round-clock/.venv/bin/python3 \
   ~/Library/Application\ Support/esp32-round-clock/hotkey_listener.py --test-keys
 ```
 
-Check `~/Library/Application Support/esp32-round-clock/hotkey-events.log`.
+Log: `~/Library/Application Support/esp32-round-clock/hotkey-events.log`
 
-## Manual commands (no hotkeys)
+## Shell commands
 
 ```bash
 ~/Library/Application\ Support/esp32-round-clock/send-page.sh next
@@ -54,8 +51,6 @@ Check `~/Library/Application Support/esp32-round-clock/hotkey-events.log`.
 ```
 
 ## Before `pio upload`
-
-USB is exclusive — stop services first:
 
 ```bash
 ./scripts/stop-hotkeys.sh
@@ -68,10 +63,5 @@ pio run -e esp32c3_round -t upload
 | Problem | Fix |
 |---------|-----|
 | Hotkey does nothing | Accessibility ON for **ESP32 Clock**; `open -a 'ESP32 Clock'` |
-| Page works in Terminal, not hotkeys | Same as above; check `hotkey-events.log` |
+| Works in Terminal, not hotkeys | Check `hotkey-events.log`; `send-page.sh --restart-daemon next` |
 | Upload port busy | `./scripts/stop-hotkeys.sh` |
-| Daemon stale | `send-page.sh --restart-daemon next` |
-
-## Optional: Karabiner / Shortcuts
-
-If Accessibility is blocked on a managed Mac, use [SHORTCUTS-SETUP.md](../scripts/SHORTCUTS-SETUP.md) or import `scripts/karabiner-esp32-clock.json` in Karabiner-Elements.

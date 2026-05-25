@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# USB instant control + built-in macOS hotkeys (no Karabiner).
+# USB instant control + built-in macOS hotkeys.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -76,7 +76,7 @@ echo "USB daemon:  launchctl print $GUI/$LABEL"
 echo "Hotkeys app: $MAC_APP"
 echo "Data:        $APP_DIR"
 echo ""
-echo "Shortcuts (no Karabiner):"
+echo "Hotkeys:"
 echo "  ⌘⇧→  next page     ⌘⇧←  previous page"
 echo "  ⌘⇧↑  rotate right   ⌘⇧↓  rotate left"
 echo ""

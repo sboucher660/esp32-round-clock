@@ -74,7 +74,7 @@ If upload fails: hold **BOOT**, tap **RESET**, release **BOOT**, retry.
 
 ## 4. Mac USB hotkeys (optional)
 
-One install sets up the USB daemon **and** global shortcuts (no Karabiner):
+One install sets up the USB daemon **and** global shortcuts:
 
 - `~/Library/Application Support/esp32-round-clock/`
 - `~/Library/LaunchAgents/com.esp32-round-clock.usb-daemon.plist`
@@ -108,7 +108,7 @@ open -a 'ESP32 Clock'
 ~/Library/Application\ Support/esp32-round-clock/send-rotate.sh left
 ```
 
-See [MAC-CONTROL.md](MAC-CONTROL.md) for troubleshooting. Karabiner/Shortcuts are optional fallbacks only.
+See [MAC-CONTROL.md](MAC-CONTROL.md) for troubleshooting.
 
 ### Before re-flashing firmware
 

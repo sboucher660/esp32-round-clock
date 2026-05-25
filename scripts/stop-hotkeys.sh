@@ -1,16 +1,15 @@
 #!/usr/bin/env bash
-# Stop background hotkey service and free the USB serial port.
+# Stop USB daemon + hotkeys and free the serial port (before pio upload).
 set -euo pipefail
 
 UID_NUM="$(id -u)"
 launchctl bootout "gui/$UID_NUM" \
-  "$HOME/Library/LaunchAgents/com.esp32-round-clock.pages" 2>/dev/null || true
+  "$HOME/Library/LaunchAgents/com.esp32-round-clock.pages.plist" 2>/dev/null || true
 launchctl bootout "gui/$UID_NUM" \
   "$HOME/Library/LaunchAgents/com.esp32-round-clock.hotkeys.plist" 2>/dev/null || true
 launchctl bootout "gui/$UID_NUM" \
   "$HOME/Library/LaunchAgents/com.esp32-round-clock.usb-daemon.plist" 2>/dev/null || true
 
-# Kill hung send-page / hotkey Python holding /dev/cu.usbmodem*
 for port in /dev/cu.usbmodem*; do
   [[ -e "$port" ]] || continue
   pids=$(lsof -t "$port" 2>/dev/null || true)
@@ -20,9 +19,7 @@ for port in /dev/cu.usbmodem*; do
   fi
 done
 
-pkill -f "mac_page_control.py" 2>/dev/null || true
 pkill -f "hotkey_listener.py" 2>/dev/null || true
-pkill -f "esp32-clock-hotkeys" 2>/dev/null || true
 pkill -f "ESP32 Clock.app" 2>/dev/null || true
 pkill -f "send_page.py" 2>/dev/null || true
 
@@ -37,5 +34,5 @@ rm -f "$HOME/Library/Application Support/esp32-round-clock/bridge.sock" \
       "$HOME/Library/Application Support/esp32-round-clock/usb-daemon.pid" 2>/dev/null || true
 
 sleep 0.5
-echo "USB daemon stopped (LaunchAgent unloaded — safe for pio upload)."
-echo "After flash: cd ~/Documents/esp32-round-clock && ./scripts/install_usb_daemon.sh"
+echo "Stopped (safe for pio upload)."
+echo "After flash: ./scripts/install_usb_daemon.sh"

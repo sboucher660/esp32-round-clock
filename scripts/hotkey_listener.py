@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Global macOS hotkeys → ESP32 USB daemon (no Karabiner).
+Global macOS hotkeys → ESP32 USB daemon.
 
 Requires one-time Accessibility for: ESP32 Clock.app
 """

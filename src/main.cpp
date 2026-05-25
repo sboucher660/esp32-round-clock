@@ -400,7 +400,7 @@ void setupPageHttp() {
   pageHttpReady = true;
 }
 
-// USB serial from Mac: n/] = next page, p/[ = previous (see scripts/mac_page_control.py)
+// USB serial from Mac: n/] = next page, p/[ = previous (see scripts/hotkey_listener.py)
 bool pollSerialCommands() {
   if (!Serial.available()) {
     return false;

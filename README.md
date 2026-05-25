@@ -12,7 +12,7 @@ Firmware and Mac helpers for the **ESP32-C3 1.28" round GC9A01** board (ESP32-24
 | **Network** | Wi-Fi RSSI, LAN / public IP |
 
 - **BOOT button (GPIO 9):** tap to change page (do not hold — flash mode)
-- **Mac hotkeys (optional):** ⌘⇧ arrows — built-in app, no Karabiner (`./scripts/install_usb_daemon.sh`)
+- **Mac hotkeys (optional):** ⌘⇧ arrows via `ESP32 Clock.app` (`./scripts/install_usb_daemon.sh`)
 - **Display rotation:** 90° steps, saved on device
 - **Boot splash:** your Apple logo image ([assets/](assets/))
 - **3D case:** Mini Mac–style enclosure ([case/README.md](case/README.md))
@@ -80,7 +80,7 @@ On the device: tap **BOOT** to cycle screens.
 ./scripts/install_usb_daemon.sh
 ```
 
-Registers global shortcuts automatically (no Karabiner). **Once:** enable **ESP32 Clock** in System Settings → Privacy → Accessibility.
+**Once:** enable **ESP32 Clock** in System Settings → Privacy → Accessibility.
 
 | Shortcut | Action |
 |----------|--------|

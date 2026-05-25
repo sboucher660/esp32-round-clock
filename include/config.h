@@ -53,7 +53,7 @@ enum Screen : uint8_t {
 #define WIFI_CHECK_MS 3000UL
 #define WIFI_RECONNECT_MS 12000UL
 
-// HTTP page control (Mac Karabiner / send-page.sh over Wi-Fi)
+// HTTP page control (Mac send-page.sh over Wi-Fi, optional)
 #define PAGE_HTTP_PORT 8080
 #define MDNS_HOSTNAME "esp32-clock"
 

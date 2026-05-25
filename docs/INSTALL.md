@@ -127,10 +127,6 @@ If you previously used the Accessibility hotkey app or Wi-Fi scripts:
 ./scripts/install_usb_daemon.sh
 ```
 
-## 5. 3D printed case (optional)
-
-See [case/README.md](../case/README.md). Print `case/stl/mini-mac-body.stl` and `case/stl/mini-mac-back.stl`.
-
 ## Troubleshooting
 
 | Problem | Fix |

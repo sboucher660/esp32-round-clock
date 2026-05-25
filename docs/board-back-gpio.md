@@ -21,7 +21,7 @@ If you still flash over USB, you can use GPIO 21 and keep USB debug; GPIO 20/21 
 
 ### **S1 pads (upper-left, near ESP module)**
 
-Schematic **S1** → **GPIO 8** with a 10k pull-up. Often **empty solder pads** (no switch fitted). Good for a wired button in the Mac case if you solder a tact switch or two wires there.
+Schematic **S1** → **GPIO 8** with a 10k pull-up. Often **empty solder pads** (no switch fitted). Solder a tact switch or two wires there for an external page button.
 
 On your unit, the **right-edge** switch is **not** this — that one goes to the **battery PMIC** (power key).
 
@@ -55,7 +55,7 @@ Do **not** use these on the **touch** (C) variant — they go to the CST816.
 | **Side button** (right edge) | Battery **power** key → charger IC |
 | **BAT+** (right) | 3.7 V LiPo |
 
-## Suggested Mac-case button
+## Suggested external button
 
-1. Solder a small wire from **P1 pin 3 (GPIO 21)** and **P1 pin 1 (GND)** to a tact switch on the case.
+1. Solder a small wire from **P1 pin 3 (GPIO 21)** and **P1 pin 1 (GND)** to a tact switch.
 2. Tell firmware `BUTTON_PIN 21` (or a second pin alongside BOOT).

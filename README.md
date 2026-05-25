@@ -15,7 +15,6 @@ Firmware and Mac helpers for the **ESP32-C3 1.28" round GC9A01** board (ESP32-24
 - **Mac hotkeys (optional):** ⌘⇧ arrows via `ESP32 Clock.app` (`./scripts/install_usb_daemon.sh`)
 - **Display rotation:** 90° steps, saved on device
 - **Boot splash:** your Apple logo image ([assets/](assets/))
-- **3D case:** Mini Mac–style enclosure ([case/README.md](case/README.md))
 
 ## Screenshots
 
@@ -127,7 +126,6 @@ esp32-round-clock/
 ├── src/main.cpp          # Firmware
 ├── include/              # config.h, secrets template
 ├── scripts/              # Mac USB daemon, hotkeys, Spotify auth
-├── case/                 # OpenSCAD + STL for 3D print
 ├── docs/                 # Install, Mac control, GPIO diagram
 └── platformio.ini
 ```

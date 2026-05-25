@@ -1,0 +1,41 @@
+# Scripts
+
+## Mac USB control (current)
+
+| Script | Purpose |
+|--------|---------|
+| `install_usb_daemon.sh` | **Main install** — LaunchAgent + copy scripts to Application Support |
+| `stop-hotkeys.sh` | Free USB port (stop daemon before `pio upload`) |
+| `cleanup_mac_install.sh` | Remove old hotkey app, bridge, Wi-Fi helpers |
+| `send-page.sh` | Next/prev page (USB, instant) |
+| `send-rotate.sh` | Rotate display 90° left/right |
+| `send_page.py` | Python backend (called by shell wrappers) |
+| `usb_daemon.py` | Persistent USB serial daemon |
+| `esp_port.py` | Auto-detect `/dev/cu.usbmodem*` |
+| `karabiner-esp32-clock.json` | Karabiner complex modifications (import) |
+| `karabiner-*.zsh` | Optional wrappers for Karabiner `shell_command` |
+| `com.esp32-round-clock.usb-daemon.plist` | LaunchAgent template |
+
+Installed copy lives at:
+
+`~/Library/Application Support/esp32-round-clock/`
+
+## Firmware / assets
+
+| Script | Purpose |
+|--------|---------|
+| `spotify_get_refresh_token.py` | One-time Spotify OAuth → `secrets.h` lines |
+| `png_to_logo_h.py` | Boot splash image → `include/apple_logo.h` |
+
+## Legacy (not needed for current setup)
+
+| Script | Notes |
+|--------|-------|
+| `install_mac_page_daemon.sh` | Old Accessibility hotkey app |
+| `uninstall_mac_page_daemon.sh` | Removes old LaunchAgent |
+| `mac_page_control.py` | pynput global hotkeys |
+| `install_karabiner_setup.sh` | Superseded by `install_usb_daemon.sh` |
+| `SHORTCUTS-SETUP.md` | Apple Shortcuts fallback |
+| `run_mac_page_control.sh` | Manual old hotkey runner |
+
+Use `cleanup_mac_install.sh` if any of these were installed earlier.

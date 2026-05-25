@@ -1,0 +1,14 @@
+.pio/
+.venv/
+logs/
+__pycache__/
+*.pyc
+.DS_Store
+.vscode/.browse*
+
+# Local secrets and generated assets
+include/secrets.h
+include/apple_logo.h
+
+# macOS install copies (lives in ~/Library/Application Support/)
+# not tracked in this repo
